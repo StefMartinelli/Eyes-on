@@ -104,7 +104,10 @@
     </div>
 
     <div id="message" class="panel hidden">Keep the statue inside the center reticle. Look back quickly for bonus points.</div>
-    <div id="reticle-ui" class="reticle hidden"></div>
+    <div id="reticle-ui" class="reticle hidden">
+      <div id="reticle-fill" style="position:absolute; left:50%; top:50%; width:6px; height:6px; margin-left:-3px; margin-top:-3px; border-radius:50%; background:rgba(255,255,255,0.9);"></div>
+      <div id="reticle-ring" style="position:absolute; inset:-4px; border:2px solid rgba(255,255,255,0.25); border-radius:50%; clip-path: inset(0 0 100% 0);"></div>
+    </div>
   </div>
 
   <a-scene renderer="antialias: true; colorManagement: true" background="color: #0f0f14" vr-mode-ui="enabled: true">
@@ -185,6 +188,8 @@
 
   <script>
     const state = {
+      gazeProgress: 0,
+      gazeTarget: null,
       started: false,
       musicOn: true,
       sfxOn: true,
@@ -236,6 +241,8 @@
     const hud = document.getElementById('hud');
     const message = document.getElementById('message');
     const reticleUI = document.getElementById('reticle-ui');
+    const reticleFill = document.getElementById('reticle-fill');
+    const reticleRing = document.getElementById('reticle-ring');
     const hudLevel = document.getElementById('hud-level');
     const hudScore = document.getElementById('hud-score');
     const hudTime = document.getElementById('hud-time');
@@ -331,7 +338,42 @@
 
       const toStatue = statuePos.clone().sub(camPos).normalize();
       const dot = camDir.dot(toStatue);
-      return dot > 0.965;
+      return dot > 0.975;
+    }
+
+    function setReticleLocked(isLocked) {
+      if (!reticleUI || !reticleFill) return;
+      reticleUI.style.borderColor = isLocked ? 'rgba(120,255,160,0.98)' : 'rgba(255,255,255,0.9)';
+      reticleFill.style.background = isLocked ? 'rgba(120,255,160,0.98)' : 'rgba(255,255,255,0.9)';
+    }
+
+    function setGazeProgress(progress) {
+      if (!reticleRing) return;
+      const pct = Math.max(0, Math.min(100, progress * 100));
+      reticleRing.style.clipPath = `inset(0 0 ${100 - pct}% 0)`;
+      reticleRing.style.borderColor = pct > 0 ? 'rgba(255,220,120,0.95)' : 'rgba(255,255,255,0.25)';
+    }
+
+    function setupGazeProgressForButtons() {
+      const gazeables = document.querySelectorAll('.gazeable');
+      gazeables.forEach((el) => {
+        el.addEventListener('mouseenter', () => {
+          state.gazeTarget = el;
+          state.gazeProgress = 0;
+        });
+        el.addEventListener('mouseleave', () => {
+          if (state.gazeTarget === el) {
+            state.gazeTarget = null;
+            state.gazeProgress = 0;
+            setGazeProgress(0);
+          }
+        });
+        el.addEventListener('click', () => {
+          state.gazeTarget = null;
+          state.gazeProgress = 0;
+          setGazeProgress(0);
+        });
+      });
     }
 
     function startLevel(level) {
@@ -372,6 +414,8 @@
         state.score += 3;
 
         const seen = isStatueCentered();
+        setReticleLocked(seen);
+
         if (seen) {
           if (!state.lastSeen) {
             state.score += 25;
@@ -382,6 +426,14 @@
           state.outOfSightFrames += 1;
           state.danger += dangerRate;
           if (state.outOfSightFrames === 8) playWarn();
+        }
+
+        if (state.gazeTarget) {
+          state.gazeProgress = Math.min(1, state.gazeProgress + 0.1 / 1.2);
+          setGazeProgress(state.gazeProgress);
+        } else {
+          state.gazeProgress = 0;
+          setGazeProgress(0);
         }
 
         state.lastSeen = seen;
@@ -428,6 +480,10 @@
       state.timer = 0;
       state.danger = 0;
       state.level = 1;
+      state.gazeTarget = null;
+      state.gazeProgress = 0;
+      setGazeProgress(0);
+      setReticleLocked(false);
       updateHUD();
       stopBgm();
       statueRoot.setAttribute('visible', false);
@@ -492,6 +548,9 @@
       updateMenuLabels();
       if (menuRoot) menuRoot.setAttribute('visible', false);
       if (startMenu) startMenu.classList.remove('hidden');
+      setupGazeProgressForButtons();
+      setReticleLocked(false);
+      setGazeProgress(0);
       setMessage('If you can see this setup box, the page is working. Tap Start Game.');
       console.log('Scene loaded, HTML menu visible.');
     });
