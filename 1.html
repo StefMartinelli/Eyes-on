@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eye's On - Mobile VR v6</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: #000;
+    }
+    body { position: relative; }
+    a-scene {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+    }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      color: white;
+      z-index: 20;
+      pointer-events: none;
+    }
+    .panel {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.62);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 12px;
+      padding: 12px 16px;
+      text-align: center;
+      backdrop-filter: blur(4px);
+    }
+    #splash {
+      top: 8%;
+      width: min(92vw, 540px);
+    }
+    #startMenu {
+      top: 20%;
+      width: min(92vw, 420px);
+      pointer-events: none;
+    }
+    #hud {
+      top: 1rem;
+      left: 1rem;
+      transform: none;
+      text-align: left;
+      font-size: 14px;
+    }
+    #message {
+      bottom: 1.2rem;
+      width: min(90vw, 700px);
+      font-size: 15px;
+    }
+    .hidden { display: none; }
+    .gaze-menu-btn {
+      margin: 10px auto;
+      width: 220px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.12);
+      color: white;
+      font-size: 16px;
+      text-align: center;
+      user-select: none;
+      box-sizing: border-box;
+    }
+    #reticle-ui {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 22px;
+      height: 22px;
+      margin-left: -11px;
+      margin-top: -11px;
+      border: 2px solid rgba(255,255,255,0.95);
+      border-radius: 50%;
+      box-sizing: border-box;
+    }
+    #reticle-fill {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 6px;
+      height: 6px;
+      margin-left: -3px;
+      margin-top: -3px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.95);
+    }
+    #gaze-bar-wrap {
+      position: absolute;
+      left: 50%;
+      top: calc(50% + 22px);
+      width: 84px;
+      height: 8px;
+      margin-left: -42px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.18);
+      overflow: hidden;
+    }
+    #gaze-bar {
+      width: 0%;
+      height: 100%;
+      background: rgba(255,220,120,0.95);
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay">
+    <div id="splash" class="panel">
+      <h1 style="margin:0 0 8px;">Eye's On</h1>
+      <div>Created by <strong>Your Name</strong></div>
+      <div>CMPT 461 - Final Individual Project</div>
+      <div style="margin-top:8px; opacity:0.9;">Build v6</div>
+    </div>
+
+    <div id="startMenu" class="panel">
+      <h2 style="margin-top:0;">Setup</h2>
+      <div id="musicGazeBtn" class="gaze-menu-btn">Music: OFF</div>
+      <div id="sfxGazeBtn" class="gaze-menu-btn">SFX: OFF</div>
+      <div id="difficultyGazeBtn" class="gaze-menu-btn">Difficulty: EASY</div>
+      <div id="startGazeBtn" class="gaze-menu-btn" style="background: rgba(255,255,255,0.18); margin-top:14px;">Start Game</div>
+      <div style="font-size:13px; opacity:0.9; margin-top:8px;">Center the crosshair on an option and hold still to select it.</div>
+    </div>
+
+    <div id="hud" class="panel hidden">
+      <div><strong>Build:</strong> v6</div>
+      <div><strong>Level:</strong> <span id="hud-level">1</span></div>
+      <div><strong>Score:</strong> <span id="hud-score">0</span></div>
+      <div><strong>Time:</strong> <span id="hud-time">0</span>s</div>
+      <div><strong>Danger:</strong> <span id="hud-danger">0</span>%</div>
+      <div><strong>Locked:</strong> <span id="hud-locked">NO</span></div>
+    </div>
+
+    <div id="message" class="panel">VERSION V6 - Gaze at Start Game.</div>
+
+    <div id="reticle-ui">
+      <div id="reticle-fill"></div>
+    </div>
+    <div id="gaze-bar-wrap"><div id="gaze-bar"></div></div>
+  </div>
+
+  <a-scene vr-mode-ui="enabled: true" background="color: #1b1027">
+    <a-entity id="rig" position="0 1.6 4">
+      <a-camera id="camera" look-controls wasd-controls-enabled="false"></a-camera>
+    </a-entity>
+
+    <a-entity light="type: ambient; intensity: 0.75"></a-entity>
+    <a-entity id="mainLight" light="type: point; intensity: 1.2; distance: 25" position="0 4 0"></a-entity>
+
+    <a-plane rotation="-90 0 0" width="18" height="18" color="#4d4d5b"></a-plane>
+    <a-plane position="0 4 -8" width="18" height="8" color="#2b2b35"></a-plane>
+    <a-plane position="-8 4 0" rotation="0 90 0" width="18" height="8" color="#32323d"></a-plane>
+    <a-plane position="8 4 0" rotation="0 -90 0" width="18" height="8" color="#32323d"></a-plane>
+    <a-plane position="0 8 0" rotation="90 0 0" width="18" height="18" color="#222"></a-plane>
+
+    <a-box position="-3 0.75 -4" width="2" height="1.5" depth="1" color="#6f4e37"></a-box>
+    <a-box position="3 1 -5.5" width="1.2" height="2" depth="0.8" color="#7f5a3c"></a-box>
+    <a-cylinder position="-4 0.6 -6" radius="0.5" height="1.2" color="#444"></a-cylinder>
+    <a-box position="-4 1.35 -6" width="0.6" height="0.1" depth="0.6" color="#b38b59"></a-box>
+
+    <a-entity id="statueRoot" visible="false">
+      <a-cylinder id="pedestal" position="0 0.4 -3" radius="0.55" height="0.8" color="#7a7a7a"></a-cylinder>
+      <a-entity id="statue" position="0 1.35 -3">
+        <a-cylinder radius="0.22" height="0.8" color="#c0c0c0"></a-cylinder>
+        <a-sphere position="0 0.56 0" radius="0.23" color="#d6d6d6"></a-sphere>
+        <a-box position="0 0.18 0.18" width="0.12" height="0.12" depth="0.12" color="#1b1b1b"></a-box>
+      </a-entity>
+    </a-entity>
+
+    <a-sky color="#1a1026"></a-sky>
+  </a-scene>
+
+  <script>
+    const state = {
+      started: false,
+      musicOn: false,
+      sfxOn: false,
+      difficulty: 'easy',
+      level: 1,
+      score: 0,
+      timer: 0,
+      danger: 0,
+      lastSeen: false,
+      levelDuration: 35,
+      gameLoop: null,
+      statueLoop: null,
+      levelConfigs: {
+        1: {
+          name: 'Level 1 - Haunted Study',
+          statueInterval: 2600,
+          dangerRate: 1.4,
+          decayRate: 2.6,
+          lightIntensity: 1.15,
+          positions: [
+            { x: 0, z: -3 },
+            { x: -2.8, z: -5.2 },
+            { x: 2.7, z: -5.5 },
+            { x: -4.8, z: -3.8 },
+            { x: 4.8, z: -3.8 },
+            { x: 0, z: -6.2 }
+          ]
+        },
+        2: {
+          name: 'Level 2 - Basement Shrine',
+          statueInterval: 1500,
+          dangerRate: 2.6,
+          decayRate: 1.8,
+          lightIntensity: 0.72,
+          positions: [
+            { x: 0, z: -6.5 },
+            { x: -5.5, z: -4.4 },
+            { x: 5.5, z: -4.4 },
+            { x: -3.6, z: -2.6 },
+            { x: 3.6, z: -2.6 },
+            { x: 0, z: -3.1 }
+          ]
+        }
+      }
+    };
+
+    const splash = document.getElementById('splash');
+    const startMenu = document.getElementById('startMenu');
+    const hud = document.getElementById('hud');
+    const message = document.getElementById('message');
+    const hudLevel = document.getElementById('hud-level');
+    const hudScore = document.getElementById('hud-score');
+    const hudTime = document.getElementById('hud-time');
+    const hudDanger = document.getElementById('hud-danger');
+    const hudLocked = document.getElementById('hud-locked');
+    const reticleUI = document.getElementById('reticle-ui');
+    const reticleFill = document.getElementById('reticle-fill');
+    const gazeBar = document.getElementById('gaze-bar');
+
+    const musicBtn = document.getElementById('musicGazeBtn');
+    const sfxBtn = document.getElementById('sfxGazeBtn');
+    const difficultyBtn = document.getElementById('difficultyGazeBtn');
+    const startBtn = document.getElementById('startGazeBtn');
+
+    const scene = document.querySelector('a-scene');
+    const camera = document.getElementById('camera');
+    const statue = document.getElementById('statue');
+    const pedestal = document.getElementById('pedestal');
+    const statueRoot = document.getElementById('statueRoot');
+    const mainLight = document.getElementById('mainLight');
+
+    function setMessage(text) {
+      message.textContent = text;
+    }
+
+    function updateSetupButtons() {
+      musicBtn.textContent = `Music: ${state.musicOn ? 'ON' : 'OFF'}`;
+      sfxBtn.textContent = `SFX: ${state.sfxOn ? 'ON' : 'OFF'}`;
+      difficultyBtn.textContent = `Difficulty: ${state.difficulty.toUpperCase()}`;
+    }
+
+    function updateHUD(locked) {
+      hudLevel.textContent = state.level;
+      hudScore.textContent = Math.floor(state.score);
+      hudTime.textContent = Math.floor(state.timer);
+      hudDanger.textContent = Math.floor(Math.max(0, Math.min(100, state.danger)));
+      hudLocked.textContent = locked ? 'YES' : 'NO';
+    }
+
+    function clearLoops() {
+      clearInterval(state.gameLoop);
+      clearInterval(state.statueLoop);
+      state.gameLoop = null;
+      state.statueLoop = null;
+    }
+
+    function setReticleLocked(locked) {
+      reticleUI.style.borderColor = locked ? 'rgba(120,255,160,1)' : 'rgba(255,255,255,0.95)';
+      reticleUI.style.boxShadow = locked ? '0 0 14px rgba(120,255,160,0.85)' : 'none';
+      reticleFill.style.background = locked ? 'rgba(120,255,160,1)' : 'rgba(255,255,255,0.95)';
+    }
+
+    function setGazeProgress(progress) {
+      gazeBar.style.width = `${Math.max(0, Math.min(100, progress * 100))}%`;
+    }
+
+    function chooseStatuePosition() {
+      const cfg = state.levelConfigs[state.level];
+      const pick = cfg.positions[Math.floor(Math.random() * cfg.positions.length)];
+      pedestal.setAttribute('position', `${pick.x} 0.4 ${pick.z}`);
+      statue.setAttribute('position', `${pick.x} 1.35 ${pick.z}`);
+    }
+
+    function isStatueCentered() {
+      const statuePos = new AFRAME.THREE.Vector3();
+      const camPos = new AFRAME.THREE.Vector3();
+      const camDir = new AFRAME.THREE.Vector3();
+
+      statue.object3D.getWorldPosition(statuePos);
+      camera.object3D.getWorldPosition(camPos);
+      camera.object3D.getWorldDirection(camDir);
+
+      const toStatue = statuePos.clone().sub(camPos).normalize();
+      const dot = camDir.dot(toStatue);
+      return dot > 0.90;
+    }
+
+    function startLevel(level) {
+      clearLoops();
+      state.started = true;
+      state.level = level;
+      state.score = 0;
+      state.timer = 0;
+      state.danger = 0;
+      state.lastSeen = false;
+
+      const cfg = state.levelConfigs[level];
+      const diffMult = state.difficulty === 'hard' ? 1.35 : 1;
+      const dangerRate = cfg.dangerRate * diffMult;
+      const decayRate = cfg.decayRate;
+      const statueInterval = cfg.statueInterval / diffMult;
+
+      splash.classList.add('hidden');
+      startMenu.classList.add('hidden');
+      hud.classList.remove('hidden');
+      statueRoot.setAttribute('visible', true);
+      mainLight.setAttribute('light', `type: point; intensity: ${cfg.lightIntensity}; distance: 25`);
+      chooseStatuePosition();
+      setMessage(`${cfg.name} - Keep the statue centered.`);
+      setReticleLocked(false);
+      setGazeProgress(0);
+      updateHUD(false);
+
+      state.statueLoop = setInterval(() => {
+        chooseStatuePosition();
+      }, statueInterval);
+
+      state.gameLoop = setInterval(() => {
+        const locked = isStatueCentered();
+        setReticleLocked(locked);
+
+        state.timer += 0.1;
+        state.score += 3;
+
+        if (locked) {
+          if (!state.lastSeen) {
+            state.score += 25;
+            setMessage('Locked on statue. Danger is dropping.');
+          }
+          state.danger = Math.max(0, state.danger - decayRate);
+        } else {
+          state.danger = Math.min(100, state.danger + dangerRate);
+        }
+
+        state.lastSeen = locked;
+        updateHUD(locked);
+
+        if (state.danger >= 100) {
+          clearLoops();
+          setMessage(`Game Over - Final Score: ${Math.floor(state.score)}. Refresh to restart for now.`);
+        }
+      }, 100);
+    }
+
+    function isCenterOnElement(el) {
+      const rect = el.getBoundingClientRect();
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      return cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom;
+    }
+
+    function setupMenuGaze() {
+      const buttons = [
+        {
+          el: musicBtn,
+          action: () => {
+            state.musicOn = !state.musicOn;
+            updateSetupButtons();
+          }
+        },
+        {
+          el: sfxBtn,
+          action: () => {
+            state.sfxOn = !state.sfxOn;
+            updateSetupButtons();
+          }
+        },
+        {
+          el: difficultyBtn,
+          action: () => {
+            state.difficulty = state.difficulty === 'easy' ? 'hard' : 'easy';
+            updateSetupButtons();
+          }
+        },
+        {
+          el: startBtn,
+          action: () => {
+            startLevel(1);
+          }
+        }
+      ];
+
+      let activeButton = null;
+      let progress = 0;
+
+      setInterval(() => {
+        if (startMenu.classList.contains('hidden')) {
+          activeButton = null;
+          progress = 0;
+          setGazeProgress(0);
+          return;
+        }
+
+        const hovered = buttons.find((b) => isCenterOnElement(b.el));
+
+        buttons.forEach((b) => {
+          b.el.style.background = 'rgba(255,255,255,0.12)';
+          b.el.style.borderColor = 'rgba(255,255,255,0.25)';
+        });
+
+        if (!hovered) {
+          activeButton = null;
+          progress = 0;
+          setGazeProgress(0);
+          return;
+        }
+
+        hovered.el.style.background = 'rgba(255,220,120,0.18)';
+        hovered.el.style.borderColor = 'rgba(255,220,120,0.8)';
+
+        if (activeButton !== hovered.el) {
+          activeButton = hovered.el;
+          progress = 0;
+        }
+
+        progress += 0.05;
+        setGazeProgress(progress);
+
+        if (progress >= 1) {
+          progress = 0;
+          setGazeProgress(0);
+          hovered.action();
+        }
+      }, 50);
+    }
+
+    scene.addEventListener('loaded', () => {
+      updateSetupButtons();
+      setupMenuGaze();
+      setMessage('VERSION V6 - Gaze at Start Game.');
+    });
+
+    setTimeout(() => {
+      splash.classList.add('hidden');
+    }, 2200);
+  </script>
+</body>
+</html>
