@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Eye's On - Mobile VR v8</title>
+  <title>Eye's On - Mobile VR v9</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: Arial, sans-serif; }
     a-scene { position: fixed; inset: 0; width: 100vw; height: 100vh; }
-
-    /* ── Overlay: only HUD, message bar, reticle, danger bar remain as HTML ── */
     #overlay { position: fixed; inset: 0; color: white; z-index: 20; pointer-events: none; }
 
     .panel {
@@ -18,11 +16,11 @@
       border-radius: 12px; padding: 12px 16px; text-align: center; backdrop-filter: blur(4px);
     }
     #splash { top: 8%; width: min(92vw, 540px); }
-    #hud { top: 1rem; left: 1rem; transform: none; text-align: left; font-size: 14px; }
+    #hud    { top: 1rem; left: 1rem; transform: none; text-align: left; font-size: 14px; }
     #message { bottom: 1.2rem; width: min(90vw, 700px); font-size: 15px; }
 
     #dangerBarWrap {
-      position: absolute; bottom: 0.5rem; left: 50%; transform: translateX(-50%);
+      position: absolute; bottom: 0.45rem; left: 50%; transform: translateX(-50%);
       width: min(90vw, 700px); height: 6px; border-radius: 999px;
       background: rgba(255,255,255,0.12); overflow: hidden;
     }
@@ -31,52 +29,39 @@
       background: linear-gradient(90deg, #4caf50, #ff5722);
       transition: width 0.1s linear; border-radius: 999px;
     }
-
     .hidden { display: none; }
 
     /* Reticle */
     #reticle-ui {
       position: absolute; top: 50%; left: 50%;
-      width: 22px; height: 22px; margin-left: -11px; margin-top: -11px;
-      border: 2px solid rgba(255,255,255,0.95); border-radius: 50%;
-      box-sizing: border-box; transition: border-color 0.15s, box-shadow 0.15s;
+      width: 24px; height: 24px; margin-left: -12px; margin-top: -12px;
+      border: 2.5px solid rgba(255,255,255,0.95); border-radius: 50%;
+      box-sizing: border-box; transition: border-color 0.12s, box-shadow 0.12s;
     }
     #reticle-fill {
       position: absolute; left: 50%; top: 50%;
       width: 6px; height: 6px; margin-left: -3px; margin-top: -3px;
-      border-radius: 50%; background: rgba(255,255,255,0.95); transition: background 0.15s;
+      border-radius: 50%; background: rgba(255,255,255,0.95); transition: background 0.12s;
     }
     #gaze-bar-wrap {
-      position: absolute; left: 50%; top: calc(50% + 17px);
+      position: absolute; left: 50%; top: calc(50% + 18px);
       width: 84px; height: 6px; margin-left: -42px;
       border-radius: 999px; background: rgba(255,255,255,0.18); overflow: hidden;
     }
     #gaze-bar { width: 0%; height: 100%; background: rgba(255,220,120,0.95); transition: width 0.05s linear; }
-
-    /* End screen (stays HTML since it only shows when gameplay is paused) */
-    #endScreen { top: 18%; width: min(92vw, 460px); pointer-events: none; }
-    #endScreen h2 { margin-top: 0; }
-    #restartGazeBtn {
-      margin: 14px auto 4px; width: 220px; padding: 10px 14px;
-      border-radius: 10px; border: 1px solid rgba(255,255,255,0.25);
-      background: rgba(255,255,255,0.18); color: white; font-size: 16px;
-      text-align: center; user-select: none; box-sizing: border-box;
-    }
   </style>
 </head>
 <body>
 <div id="overlay">
-  <!-- Splash: shown briefly on load, HTML is fine since camera can't move yet -->
   <div id="splash" class="panel">
     <h1 style="margin:0 0 8px;">Eye's On</h1>
     <div>Created by <strong>Your Name</strong></div>
-    <div>CMPT 461 - Final Individual Project</div>
-    <div style="margin-top:8px;opacity:0.9;">Build v8</div>
+    <div>CMPT 461 — Final Individual Project</div>
+    <div style="margin-top:8px;opacity:0.8;">Build v9</div>
   </div>
 
-  <!-- HUD -->
   <div id="hud" class="panel hidden">
-    <div><strong>Build:</strong> v8</div>
+    <div><strong>Build:</strong> v9</div>
     <div><strong>Level:</strong> <span id="hud-level">1</span></div>
     <div><strong>Score:</strong> <span id="hud-score">0</span></div>
     <div><strong>Time:</strong> <span id="hud-time">0</span>s</div>
@@ -84,40 +69,27 @@
     <div><strong>Locked:</strong> <span id="hud-locked">NO</span></div>
   </div>
 
-  <!-- Message bar -->
-  <div id="message" class="panel">Look at a button below and hold your gaze to select it.</div>
+  <div id="message" class="panel">Look at a button and hold your gaze to select it.</div>
 
-  <!-- End screen -->
-  <div id="endScreen" class="panel hidden">
-    <h2 id="endTitle">Game Over</h2>
-    <div id="endBody"></div>
-    <div id="restartGazeBtn">↺ Play Again</div>
-    <div style="font-size:13px;opacity:0.9;margin-top:8px;">Center crosshair on Play Again and hold.</div>
-  </div>
-
-  <!-- Reticle -->
   <div id="reticle-ui"><div id="reticle-fill"></div></div>
   <div id="gaze-bar-wrap"><div id="gaze-bar"></div></div>
-
-  <!-- Danger bar -->
   <div id="dangerBarWrap"><div id="dangerBarFill"></div></div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════
-     A-Frame Scene
-     ══════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════ A-FRAME SCENE ══════════════════ -->
 <a-scene vr-mode-ui="enabled: true" background="color: #1b1027">
 
-  <!-- Camera rig — player starts at z=0 looking toward -z (menus are at z=-2) -->
   <a-entity id="rig" position="0 1.6 0">
     <a-camera id="camera" look-controls wasd-controls-enabled="false">
-      <!-- A-Frame cursor for raycasting against 3D menu buttons -->
+      <!--
+        ONE cursor/raycaster that targets BOTH menu buttons AND the statue.
+        We read intersections manually in JS — no fuse, no auto-click.
+      -->
       <a-cursor
         id="cursor3d"
         fuse="false"
-        raycaster="objects: .menu-btn; far: 20"
-        color="transparent"
-        opacity="0"
+        raycaster="objects: .raycast-target; far: 30; interval: 50"
+        color="transparent" opacity="0"
       ></a-cursor>
     </a-camera>
   </a-entity>
@@ -125,85 +97,94 @@
   <a-entity light="type: ambient; intensity: 0.75"></a-entity>
   <a-entity id="mainLight" light="type: point; intensity: 1.2; distance: 25" position="0 4 0"></a-entity>
 
-  <!-- ── Room ── -->
+  <!-- Room -->
   <a-plane rotation="-90 0 0" width="18" height="18" color="#4d4d5b"></a-plane>
   <a-plane position="0 4 -8"  width="18" height="8"  color="#2b2b35"></a-plane>
   <a-plane position="-8 4 0"  rotation="0 90 0"  width="18" height="8" color="#32323d"></a-plane>
   <a-plane position="8 4 0"   rotation="0 -90 0" width="18" height="8" color="#32323d"></a-plane>
   <a-plane position="0 8 0"   rotation="90 0 0"  width="18" height="18" color="#222"></a-plane>
 
-  <!-- ── Props ── -->
+  <!-- Props -->
   <a-box position="-3 0.75 -4"  width="2"   height="1.5" depth="1"   color="#6f4e37"></a-box>
   <a-box position="3 1 -5.5"    width="1.2" height="2"   depth="0.8" color="#7f5a3c"></a-box>
   <a-cylinder position="-4 0.6 -6" radius="0.5" height="1.2" color="#444"></a-cylinder>
   <a-box position="-4 1.35 -6"  width="0.6" height="0.1" depth="0.6" color="#b38b59"></a-box>
 
-  <!-- ══════════════════════════════════════════════════════════════════════
-       3-D SETUP MENU  — fixed in world space, player looks around to aim
-       Positioned in front of the camera start position (z = -2)
-       ══════════════════════════════════════════════════════════════════════ -->
-  <a-entity id="menuRoot" position="0 1.6 -2">
+  <!-- ══════════ SETUP MENU (3D, world-fixed) ══════════ -->
+  <a-entity id="menuRoot" position="0 1.6 -2.2">
+    <!-- Background -->
+    <a-plane width="1.9" height="2.5" color="#0a0a1a" opacity="0.92" position="0 0 -0.005"></a-plane>
 
-    <!-- Background panel -->
-    <a-plane
-      width="1.8" height="2.4"
-      color="#0d0d1a" opacity="0.88"
-      position="0 0 -0.01"
-    ></a-plane>
+    <a-text value="EYE'S ON — SETUP" align="center" color="#ffffff"
+      width="1.7" position="0 0.96 0"></a-text>
 
-    <!-- Title -->
-    <a-text value="SETUP" align="center" color="#ffffff"
-      width="1.6" position="0 0.92 0" font="mozillavr"></a-text>
-
-    <!-- ── Music button ── -->
-    <a-entity id="btn-music" class="menu-btn"
-      position="0 0.55 0" data-action="music">
-      <a-plane width="1.4" height="0.28" color="#1a1a2e" opacity="0.9"
-        class="menu-btn" data-action="music"></a-plane>
-      <a-text id="txt-music" value="Music: OFF" align="center" color="#ffffff"
-        width="1.3" position="0 0 0.01"></a-text>
+    <!-- Music -->
+    <a-entity id="btn-music" position="0 0.56 0">
+      <a-plane id="bg-music" width="1.5" height="0.30" color="#1a1a2e" opacity="0.95"
+        class="raycast-target" data-action="music"></a-plane>
+      <a-text id="txt-music" value="Music: OFF" align="center" color="#ffffff" width="1.4" position="0 0 0.012"></a-text>
     </a-entity>
 
-    <!-- ── SFX button ── -->
-    <a-entity id="btn-sfx" class="menu-btn"
-      position="0 0.18 0" data-action="sfx">
-      <a-plane width="1.4" height="0.28" color="#1a1a2e" opacity="0.9"
-        class="menu-btn" data-action="sfx"></a-plane>
-      <a-text id="txt-sfx" value="SFX: OFF" align="center" color="#ffffff"
-        width="1.3" position="0 0 0.01"></a-text>
+    <!-- SFX -->
+    <a-entity id="btn-sfx" position="0 0.18 0">
+      <a-plane id="bg-sfx" width="1.5" height="0.30" color="#1a1a2e" opacity="0.95"
+        class="raycast-target" data-action="sfx"></a-plane>
+      <a-text id="txt-sfx" value="SFX: OFF" align="center" color="#ffffff" width="1.4" position="0 0 0.012"></a-text>
     </a-entity>
 
-    <!-- ── Difficulty button ── -->
-    <a-entity id="btn-difficulty" class="menu-btn"
-      position="0 -0.19 0" data-action="difficulty">
-      <a-plane width="1.4" height="0.28" color="#1a1a2e" opacity="0.9"
-        class="menu-btn" data-action="difficulty"></a-plane>
-      <a-text id="txt-difficulty" value="Difficulty: EASY" align="center" color="#ffffff"
-        width="1.3" position="0 0 0.01"></a-text>
+    <!-- Difficulty -->
+    <a-entity id="btn-difficulty" position="0 -0.20 0">
+      <a-plane id="bg-difficulty" width="1.5" height="0.30" color="#1a1a2e" opacity="0.95"
+        class="raycast-target" data-action="difficulty"></a-plane>
+      <a-text id="txt-difficulty" value="Difficulty: EASY" align="center" color="#ffffff" width="1.4" position="0 0 0.012"></a-text>
     </a-entity>
 
-    <!-- ── Start Game button ── -->
-    <a-entity id="btn-start" class="menu-btn"
-      position="0 -0.62 0" data-action="start">
-      <a-plane width="1.4" height="0.32" color="#2a2a4a" opacity="0.95"
-        class="menu-btn" data-action="start"></a-plane>
-      <a-text id="txt-start" value="▶  Start Game" align="center" color="#ffdd77"
-        width="1.3" position="0 0 0.01"></a-text>
+    <!-- Start -->
+    <a-entity id="btn-start" position="0 -0.65 0">
+      <a-plane id="bg-start" width="1.5" height="0.34" color="#1e2a4a" opacity="0.98"
+        class="raycast-target" data-action="start"></a-plane>
+      <a-text value="▶  Start Game" align="center" color="#ffdd77" width="1.4" position="0 0 0.012"></a-text>
     </a-entity>
 
-    <!-- Hint text -->
-    <a-text value="Look at a button and hold your gaze to select."
-      align="center" color="#aaaaaa" width="1.5" position="0 -0.95 0"></a-text>
+    <a-text value="Look at a button and hold to select."
+      align="center" color="#888888" width="1.5" position="0 -0.98 0"></a-text>
+  </a-entity>
 
-  </a-entity><!-- /menuRoot -->
+  <!-- ══════════ END PANEL (3D, world-fixed, hidden until game ends) ══════════ -->
+  <a-entity id="endRoot" visible="false" position="0 1.6 -2.2">
+    <a-plane width="1.9" height="2.0" color="#0a0a1a" opacity="0.92" position="0 0 -0.005"></a-plane>
 
-  <!-- ── Statue (hidden until game starts) ── -->
+    <a-text id="end-title" value="GAME OVER" align="center" color="#ff6666"
+      width="1.7" position="0 0.70 0"></a-text>
+    <a-text id="end-line1" value="" align="center" color="#ffffff" width="1.6" position="0 0.35 0"></a-text>
+    <a-text id="end-line2" value="" align="center" color="#aaaaaa" width="1.6" position="0 0.10 0"></a-text>
+    <a-text id="end-line3" value="" align="center" color="#aaaaaa" width="1.6" position="0 -0.12 0"></a-text>
+
+    <!-- Play Again button -->
+    <a-entity id="btn-restart" position="0 -0.52 0">
+      <a-plane id="bg-restart" width="1.5" height="0.34" color="#1e2a4a" opacity="0.98"
+        class="raycast-target" data-action="restart"></a-plane>
+      <a-text value="↺  Play Again" align="center" color="#ffdd77" width="1.4" position="0 0 0.012"></a-text>
+    </a-entity>
+
+    <a-text value="Look at Play Again and hold to select."
+      align="center" color="#888888" width="1.5" position="0 -0.85 0"></a-text>
+  </a-entity>
+
+  <!-- ══════════ STATUE ══════════ -->
   <a-entity id="statueRoot" visible="false" position="0 0 -3">
-    <a-cylinder id="pedestal" position="0 0.4 0" radius="0.55" height="0.8" color="#7a7a7a"></a-cylinder>
+    <a-cylinder position="0 0.4 0" radius="0.55" height="0.8" color="#7a7a7a"></a-cylinder>
     <a-entity id="statueBody" position="0 1.35 0">
-      <a-cylinder id="statue" radius="0.22" height="0.8" color="#c0c0c0"></a-cylinder>
-      <a-sphere position="0 0.56 0" radius="0.23" color="#d6d6d6"></a-sphere>
-      <a-box position="0 0.18 0.18" width="0.12" height="0.12" depth="0.12" color="#1b1b1b"></a-box>
+      <!--
+        The statue pieces all carry class="raycast-target" AND data-action="statue"
+        so the single raycaster can detect gaze on the statue during gameplay.
+      -->
+      <a-cylinder class="raycast-target" data-action="statue"
+        radius="0.22" height="0.8" color="#c0c0c0"></a-cylinder>
+      <a-sphere class="raycast-target" data-action="statue"
+        position="0 0.56 0" radius="0.23" color="#d6d6d6"></a-sphere>
+      <a-box class="raycast-target" data-action="statue"
+        position="0 0.18 0.18" width="0.12" height="0.12" depth="0.12" color="#1b1b1b"></a-box>
     </a-entity>
   </a-entity>
 
@@ -211,92 +192,85 @@
 </a-scene>
 
 <script>
-// ─── State ──────────────────────────────────────────────────────────────────
+// ─── State ───────────────────────────────────────────────────────────────────
 const state = {
-  started: false,
-  musicOn: false,
-  sfxOn: false,
-  difficulty: 'easy',
-  level: 1,
-  score: 0,
-  timer: 0,
-  danger: 0,
-  lastSeen: false,
+  phase: 'menu',   // 'menu' | 'playing' | 'end'
+  musicOn: false, sfxOn: false, difficulty: 'easy',
+  level: 1, score: 0, timer: 0, danger: 0, lastSeen: false,
   levelDuration: 35,
-  gameLoop: null,
-  statueLoop: null,
+  gameLoop: null, statueLoop: null,
+  statueGazed: false,   // true this tick if raycaster hits statue
   levelConfigs: {
     1: {
       name: 'Level 1 — Haunted Study',
-      statueInterval: 2600,
-      dangerRate: 1.4,
-      decayRate: 2.6,
-      lightIntensity: 1.15,
+      statueInterval: 2600, dangerRate: 1.4, decayRate: 2.6, lightIntensity: 1.15,
       positions: [
-        { x: 0,    z: -3 }, { x: -2.8, z: -5.2 }, { x: 2.7, z: -5.5 },
-        { x: -4.8, z: -3.8 }, { x: 4.8, z: -3.8 }, { x: 0, z: -6.2 }
+        {x:0,z:-3},{x:-2.8,z:-5.2},{x:2.7,z:-5.5},
+        {x:-4.8,z:-3.8},{x:4.8,z:-3.8},{x:0,z:-6.2}
       ]
     },
     2: {
       name: 'Level 2 — Basement Shrine',
-      statueInterval: 1500,
-      dangerRate: 2.6,
-      decayRate: 1.8,
-      lightIntensity: 0.72,
+      statueInterval: 1500, dangerRate: 2.6, decayRate: 1.8, lightIntensity: 0.72,
       positions: [
-        { x: 0,   z: -6.5 }, { x: -5.5, z: -4.4 }, { x: 5.5, z: -4.4 },
-        { x: -3.6, z: -2.6 }, { x: 3.6, z: -2.6 }, { x: 0,   z: -3.1 }
+        {x:0,z:-6.5},{x:-5.5,z:-4.4},{x:5.5,z:-4.4},
+        {x:-3.6,z:-2.6},{x:3.6,z:-2.6},{x:0,z:-3.1}
       ]
     }
   }
 };
 
-// ─── DOM refs ────────────────────────────────────────────────────────────────
-const splash        = document.getElementById('splash');
-const hud           = document.getElementById('hud');
-const message       = document.getElementById('message');
-const endScreen     = document.getElementById('endScreen');
-const endTitle      = document.getElementById('endTitle');
-const endBody       = document.getElementById('endBody');
-const restartBtn    = document.getElementById('restartGazeBtn');
-const hudLevel      = document.getElementById('hud-level');
-const hudScore      = document.getElementById('hud-score');
-const hudTime       = document.getElementById('hud-time');
-const hudDanger     = document.getElementById('hud-danger');
-const hudLocked     = document.getElementById('hud-locked');
-const reticleUI     = document.getElementById('reticle-ui');
-const reticleFill   = document.getElementById('reticle-fill');
-const gazeBar       = document.getElementById('gaze-bar');
-const dangerBarFill = document.getElementById('dangerBarFill');
+// ─── DOM / AFrame refs ───────────────────────────────────────────────────────
+const scene        = document.querySelector('a-scene');
+const cursor3d     = document.getElementById('cursor3d');
+const menuRoot     = document.getElementById('menuRoot');
+const endRoot      = document.getElementById('endRoot');
+const statueRoot   = document.getElementById('statueRoot');
+const mainLight    = document.getElementById('mainLight');
 
-// A-Frame entities
-const scene       = document.querySelector('a-scene');
-const camera      = document.getElementById('camera');
-const menuRoot    = document.getElementById('menuRoot');
-const statueRoot  = document.getElementById('statueRoot');
-const statueBody  = document.getElementById('statueBody');
-const mainLight   = document.getElementById('mainLight');
+const txtMusic     = document.getElementById('txt-music');
+const txtSfx       = document.getElementById('txt-sfx');
+const txtDifficulty= document.getElementById('txt-difficulty');
+const bgMusic      = document.getElementById('bg-music');
+const bgSfx        = document.getElementById('bg-sfx');
+const bgDifficulty = document.getElementById('bg-difficulty');
+const bgStart      = document.getElementById('bg-start');
+const bgRestart    = document.getElementById('bg-restart');
 
-// 3-D button planes (the coloured backing planes are what the raycaster hits)
-const btnMusic      = document.getElementById('btn-music');
-const btnSfx        = document.getElementById('btn-sfx');
-const btnDifficulty = document.getElementById('btn-difficulty');
-const btnStart      = document.getElementById('btn-start');
-const txtMusic      = document.getElementById('txt-music');
-const txtSfx        = document.getElementById('txt-sfx');
-const txtDifficulty = document.getElementById('txt-difficulty');
+const endTitle     = document.getElementById('end-title');
+const endLine1     = document.getElementById('end-line1');
+const endLine2     = document.getElementById('end-line2');
+const endLine3     = document.getElementById('end-line3');
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-const setMessage = t => { message.textContent = t; };
+const splash       = document.getElementById('splash');
+const hud          = document.getElementById('hud');
+const message      = document.getElementById('message');
+const hudLevel     = document.getElementById('hud-level');
+const hudScore     = document.getElementById('hud-score');
+const hudTime      = document.getElementById('hud-time');
+const hudDanger    = document.getElementById('hud-danger');
+const hudLocked    = document.getElementById('hud-locked');
+const reticleUI    = document.getElementById('reticle-ui');
+const reticleFill  = document.getElementById('reticle-fill');
+const gazeBar      = document.getElementById('gaze-bar');
+const dangerFill   = document.getElementById('dangerBarFill');
 
-function setReticleLocked(locked) {
-  reticleUI.style.borderColor  = locked ? 'rgba(120,255,160,1)' : 'rgba(255,255,255,0.95)';
-  reticleUI.style.boxShadow    = locked ? '0 0 14px rgba(120,255,160,0.85)' : 'none';
-  reticleFill.style.background = locked ? 'rgba(120,255,160,1)' : 'rgba(255,255,255,0.95)';
+// ─── UI helpers ──────────────────────────────────────────────────────────────
+const setMsg = t => { message.textContent = t; };
+
+function setReticleLocked(on) {
+  reticleUI.style.borderColor  = on ? 'rgba(120,255,160,1)' : 'rgba(255,255,255,0.95)';
+  reticleUI.style.boxShadow    = on ? '0 0 14px rgba(120,255,160,0.85)' : 'none';
+  reticleFill.style.background = on ? 'rgba(120,255,160,1)' : 'rgba(255,255,255,0.95)';
 }
 
 function setGazeProgress(p) {
-  gazeBar.style.width = `${Math.max(0, Math.min(100, p * 100))}%`;
+  gazeBar.style.width = Math.max(0, Math.min(100, p * 100)) + '%';
+}
+
+function setBg(el, highlight) {
+  if (!el) return;
+  el.setAttribute('color', highlight ? '#3a3a1a' : (el.id === 'bg-start' || el.id === 'bg-restart' ? '#1e2a4a' : '#1a1a2e'));
 }
 
 function updateHUD(locked) {
@@ -305,13 +279,13 @@ function updateHUD(locked) {
   hudTime.textContent   = Math.floor(state.timer);
   hudDanger.textContent = Math.floor(Math.max(0, Math.min(100, state.danger)));
   hudLocked.textContent = locked ? 'YES' : 'NO';
-  dangerBarFill.style.width = Math.max(0, Math.min(100, state.danger)) + '%';
+  dangerFill.style.width = Math.max(0, Math.min(100, state.danger)) + '%';
 }
 
 function updateMenuText() {
-  txtMusic.setAttribute('value',      `Music: ${state.musicOn ? 'ON' : 'OFF'}`);
-  txtSfx.setAttribute('value',        `SFX: ${state.sfxOn ? 'ON' : 'OFF'}`);
-  txtDifficulty.setAttribute('value', `Difficulty: ${state.difficulty.toUpperCase()}`);
+  txtMusic.setAttribute('value',       `Music: ${state.musicOn ? 'ON' : 'OFF'}`);
+  txtSfx.setAttribute('value',         `SFX: ${state.sfxOn ? 'ON' : 'OFF'}`);
+  txtDifficulty.setAttribute('value',  `Difficulty: ${state.difficulty.toUpperCase()}`);
 }
 
 function clearLoops() {
@@ -320,98 +294,56 @@ function clearLoops() {
   state.gameLoop = state.statueLoop = null;
 }
 
-// Highlight / un-highlight a 3D button's backing plane
-function highlightBtn(entity, on) {
-  // The first child of each btn entity is the a-plane backing
-  const plane = entity.querySelector('a-plane');
-  if (!plane) return;
-  plane.setAttribute('color', on ? '#3a3a1a' : '#1a1a2e');
-  plane.setAttribute('opacity', on ? '1' : '0.9');
-}
-
-// ─── Statue helpers ──────────────────────────────────────────────────────────
+// ─── Statue position ──────────────────────────────────────────────────────────
 function chooseStatuePosition() {
   const cfg  = state.levelConfigs[state.level];
   const pick = cfg.positions[Math.floor(Math.random() * cfg.positions.length)];
   statueRoot.setAttribute('position', `${pick.x} 0 ${pick.z}`);
 }
 
-function isStatueCentered() {
-  const statuePos = new AFRAME.THREE.Vector3();
-  const camPos    = new AFRAME.THREE.Vector3();
-  const camDir    = new AFRAME.THREE.Vector3();
-  statueBody.object3D.getWorldPosition(statuePos);
-  camera.object3D.getWorldPosition(camPos);
-  camera.object3D.getWorldDirection(camDir);
-  return camDir.dot(statuePos.clone().sub(camPos).normalize()) > 0.85;
-}
-
-// ─── End screen ──────────────────────────────────────────────────────────────
-function showEndScreen(title, body) {
+// ─── Show end panel (3D) ──────────────────────────────────────────────────────
+function showEnd(title, color, l1, l2, l3) {
   clearLoops();
+  state.phase = 'end';
   statueRoot.setAttribute('visible', false);
   hud.classList.add('hidden');
   message.textContent = '';
-  dangerBarFill.style.width = '0%';
+  dangerFill.style.width = '0%';
   setReticleLocked(false);
   setGazeProgress(0);
-  endTitle.textContent = title;
-  endBody.innerHTML    = body;
-  endScreen.classList.remove('hidden');
-  setupRestartGaze();
+  endTitle.setAttribute('value', title);
+  endTitle.setAttribute('color', color);
+  endLine1.setAttribute('value', l1);
+  endLine2.setAttribute('value', l2);
+  endLine3.setAttribute('value', l3);
+  endRoot.setAttribute('visible', true);
 }
 
 // ─── Return to menu ───────────────────────────────────────────────────────────
 function returnToMenu() {
   clearLoops();
-  state.started = false;
-  endScreen.classList.add('hidden');
+  state.phase = 'menu';
+  endRoot.setAttribute('visible', false);
   hud.classList.add('hidden');
   statueRoot.setAttribute('visible', false);
   menuRoot.setAttribute('visible', true);
-  // Re-enable raycaster target class on menu buttons
-  document.querySelectorAll('.menu-btn').forEach(el => {
-    el.classList.add('menu-btn');
-  });
   setReticleLocked(false);
   setGazeProgress(0);
-  dangerBarFill.style.width = '0%';
+  dangerFill.style.width = '0%';
   updateMenuText();
-  setMessage('Look at a button below and hold your gaze to select it.');
+  setMsg('Look at a button and hold your gaze to select it.');
 }
 
-// ─── Restart gaze (HTML overlay button, game is paused so crosshair is fine) ─
-function setupRestartGaze() {
-  let progress = 0;
-  const id = setInterval(() => {
-    if (endScreen.classList.contains('hidden')) { clearInterval(id); return; }
-    const rect = restartBtn.getBoundingClientRect();
-    const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
-    const over = cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom;
-    if (over) {
-      restartBtn.style.background  = 'rgba(255,220,120,0.22)';
-      restartBtn.style.borderColor = 'rgba(255,220,120,0.8)';
-      progress += 0.05;
-      setGazeProgress(progress);
-      if (progress >= 1) { clearInterval(id); endScreen.classList.add('hidden'); returnToMenu(); }
-    } else {
-      restartBtn.style.background  = 'rgba(255,255,255,0.18)';
-      restartBtn.style.borderColor = 'rgba(255,255,255,0.25)';
-      progress = 0;
-      setGazeProgress(0);
-    }
-  }, 50);
-}
-
-// ─── Start level ─────────────────────────────────────────────────────────────
+// ─── Start a level ────────────────────────────────────────────────────────────
 function startLevel(level) {
   clearLoops();
-  state.started   = true;
+  state.phase     = 'playing';
   state.level     = level;
   state.score     = level === 1 ? 0 : state.score;
   state.timer     = 0;
   state.danger    = 0;
   state.lastSeen  = false;
+  state.statueGazed = false;
 
   const cfg        = state.levelConfigs[level];
   const diffMult   = state.difficulty === 'hard' ? 1.35 : 1;
@@ -419,23 +351,23 @@ function startLevel(level) {
   const decayRate  = cfg.decayRate;
   const interval   = cfg.statueInterval / diffMult;
 
-  // Hide menu, show game elements
   menuRoot.setAttribute('visible', false);
-  endScreen.classList.add('hidden');
+  endRoot.setAttribute('visible', false);
   hud.classList.remove('hidden');
   statueRoot.setAttribute('visible', true);
   mainLight.setAttribute('light', `type: point; intensity: ${cfg.lightIntensity}; distance: 25`);
   chooseStatuePosition();
-  setMessage(`${cfg.name} — Keep the statue in your crosshair!`);
+  setMsg(`${cfg.name} — Keep the statue in your crosshair!`);
   setReticleLocked(false);
   setGazeProgress(0);
-  dangerBarFill.style.width = '0%';
+  dangerFill.style.width = '0%';
   updateHUD(false);
 
   state.statueLoop = setInterval(chooseStatuePosition, interval);
 
+  // Game tick — reads state.statueGazed which is set by the raycaster poll below
   state.gameLoop = setInterval(() => {
-    const locked = isStatueCentered();
+    const locked = state.statueGazed;
     setReticleLocked(locked);
     state.timer += 0.1;
     state.score += 3;
@@ -443,135 +375,135 @@ function startLevel(level) {
     if (locked) {
       if (!state.lastSeen) {
         state.score += 25;
-        setMessage('Locked on! Danger dropping…');
+        setMsg('Locked on! Danger dropping…');
       }
       state.danger = Math.max(0, state.danger - decayRate);
     } else {
       state.danger = Math.min(100, state.danger + dangerRate);
-      if (state.danger > 70) setMessage('⚠️ DANGER! Look at the statue!');
-      else if (!state.lastSeen) setMessage(`${cfg.name} — Keep the statue in your crosshair!`);
+      if (state.danger > 70) setMsg('⚠️ DANGER! Look at the statue!');
+      else if (!state.lastSeen) setMsg(`${cfg.name} — Keep the statue in your crosshair!`);
     }
 
     state.lastSeen = locked;
     updateHUD(locked);
 
     if (state.danger >= 100) {
-      showEndScreen('👁 Game Over',
-        `<p>You lost sight of the statue.</p>
-         <p>Final Score: <strong>${Math.floor(state.score)}</strong></p>
-         <p>Level reached: <strong>${state.level}</strong></p>`);
+      showEnd('GAME OVER', '#ff6666',
+        'You lost sight of the statue.',
+        `Score: ${Math.floor(state.score)}`,
+        `Level reached: ${state.level}`);
       return;
     }
 
     if (state.timer >= state.levelDuration) {
       clearLoops();
       if (level === 1 && state.levelConfigs[2]) {
-        setMessage('Level 1 Complete! Get ready…');
+        setMsg('Level 1 Complete! Get ready…');
         setTimeout(() => startLevel(2), 2000);
       } else {
-        showEndScreen('🏆 You Win!',
-          `<p>You survived all levels!</p>
-           <p>Final Score: <strong>${Math.floor(state.score)}</strong></p>
-           <p>Difficulty: <strong>${state.difficulty.toUpperCase()}</strong></p>`);
+        showEnd('YOU WIN!', '#88ff88',
+          'You survived all levels!',
+          `Final Score: ${Math.floor(state.score)}`,
+          `Difficulty: ${state.difficulty.toUpperCase()}`);
       }
     }
   }, 100);
 }
 
-// ─── 3-D Menu Gaze System ────────────────────────────────────────────────────
-// Uses A-Frame's raycaster component on the cursor to detect which 3D button
-// the player is gazing at, then runs a dwell timer to confirm selection.
-function setup3DMenuGaze() {
-  const cursor = document.getElementById('cursor3d');
+// ─── MASTER GAZE CONTROLLER ──────────────────────────────────────────────────
+// One interval reads the raycaster intersections and routes behaviour
+// based on state.phase: 'menu', 'playing', or 'end'.
+//
+// KEY FIX: during 'playing', we simply check whether the first intersection
+// has data-action="statue". No dot-product math needed — A-Frame's raycaster
+// already handles the geometry test correctly.
 
-  const actions = {
-    music: () => { state.musicOn = !state.musicOn; updateMenuText(); },
-    sfx:   () => { state.sfxOn   = !state.sfxOn;   updateMenuText(); },
-    difficulty: () => {
-      state.difficulty = state.difficulty === 'easy' ? 'hard' : 'easy';
-      updateMenuText();
-    },
-    start: () => { startLevel(1); }
+function setupGazeController() {
+  // Button background elements keyed by data-action value
+  const bgMap = {
+    music: bgMusic, sfx: bgSfx,
+    difficulty: bgDifficulty, start: bgStart, restart: bgRestart
   };
 
-  // Map entity id → highlight entity
-  const btnEntities = {
-    'btn-music': btnMusic,
-    'btn-sfx': btnSfx,
-    'btn-difficulty': btnDifficulty,
-    'btn-start': btnStart
+  const menuActions = {
+    music:      () => { state.musicOn = !state.musicOn; updateMenuText(); },
+    sfx:        () => { state.sfxOn   = !state.sfxOn;   updateMenuText(); },
+    difficulty: () => { state.difficulty = state.difficulty === 'easy' ? 'hard' : 'easy'; updateMenuText(); },
+    start:      () => startLevel(1),
+    restart:    () => returnToMenu()
   };
 
-  let gazedAction = null;
+  let lastAction   = null;   // which button/target is currently gazed at
   let gazeProgress = 0;
-  let lastEntity = null;
 
-  // Poll the cursor's intersected objects every 50ms
-  const gazeInterval = setInterval(() => {
-    if (state.started) {
-      // Game running — clear menu gaze state and stop highlighting
-      if (lastEntity) { highlightBtn(lastEntity, false); lastEntity = null; }
-      gazedAction = null; gazeProgress = 0; setGazeProgress(0);
+  setInterval(() => {
+    const rc = cursor3d.components && cursor3d.components.raycaster;
+    const hits = rc ? rc.intersections : [];
+
+    // Find the first hit that has a data-action on itself or an ancestor
+    let action = null;
+    if (hits.length > 0) {
+      let el = hits[0].object.el;
+      while (el && !el.dataset.action) el = el.parentElement;
+      if (el) action = el.dataset.action;
+    }
+
+    // ── During gameplay: statue gaze detection ────────────────────────────────
+    if (state.phase === 'playing') {
+      state.statueGazed = (action === 'statue');
+      // Don't run button logic during play
+      lastAction   = null;
+      gazeProgress = 0;
+      setGazeProgress(0);
       return;
     }
 
-    const raycaster = cursor.components.raycaster;
-    const intersections = raycaster ? raycaster.intersections : [];
+    // ── Menu / end screen: button gaze dwell ─────────────────────────────────
+    // Only process menu actions in 'menu' phase, restart in 'end' phase
+    const validActions = state.phase === 'menu'
+      ? ['music','sfx','difficulty','start']
+      : ['restart'];
 
-    let hitAction = null;
-    let hitEntity = null;
+    const hit = action && validActions.includes(action) ? action : null;
 
-    if (intersections.length > 0) {
-      // Walk up the DOM to find the menu-btn entity with a data-action
-      let el = intersections[0].object.el;
-      while (el && !el.dataset.action) el = el.parentElement;
-      if (el && el.dataset.action) {
-        hitAction = el.dataset.action;
-        // Find the wrapper entity for highlighting
-        const wrapperId = 'btn-' + hitAction;
-        hitEntity = document.getElementById(wrapperId);
-      }
+    // Un-highlight previous button if we moved off it
+    if (lastAction && lastAction !== hit) {
+      setBg(bgMap[lastAction], false);
     }
 
-    // Reset highlight on previously gazed button
-    if (lastEntity && lastEntity !== hitEntity) {
-      highlightBtn(lastEntity, false);
-    }
+    if (hit) {
+      setBg(bgMap[hit], true);
 
-    if (hitAction) {
-      if (hitEntity) highlightBtn(hitEntity, true);
-
-      if (gazedAction !== hitAction) {
-        // Switched to a new button — reset timer
-        gazedAction   = hitAction;
-        gazeProgress  = 0;
+      if (lastAction !== hit) {
+        // Moved to a new button — reset dwell
+        gazeProgress = 0;
       }
 
-      gazeProgress += 0.05; // 50ms tick × 20 ticks = 1 second to activate
+      gazeProgress += 0.05;  // ~1 second dwell at 50ms ticks
       setGazeProgress(gazeProgress);
 
       if (gazeProgress >= 1) {
         gazeProgress = 0;
         setGazeProgress(0);
-        if (hitEntity) highlightBtn(hitEntity, false);
-        actions[gazedAction]();
-        gazedAction = null;
+        setBg(bgMap[hit], false);
+        lastAction = null;
+        menuActions[hit]();
+        return;
       }
     } else {
-      gazedAction  = null;
       gazeProgress = 0;
       setGazeProgress(0);
     }
 
-    lastEntity = hitEntity;
+    lastAction = hit;
   }, 50);
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 scene.addEventListener('loaded', () => {
   updateMenuText();
-  setup3DMenuGaze();
-  setMessage('Look at a button and hold your gaze to select it.');
+  setupGazeController();
+  setMsg('Look at a button and hold your gaze to select it.');
   setTimeout(() => splash.classList.add('hidden'), 2200);
 });
 </script>
