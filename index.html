@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eye's On - Mobile VR</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #000; }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      color: white;
+      z-index: 10;
+    }
+    .panel {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 12px 18px;
+      text-align: center;
+      backdrop-filter: blur(4px);
+    }
+    #splash { top: 8%; width: min(90vw, 540px); }
+    #hud {
+      top: 1rem;
+      left: 1rem;
+      transform: none;
+      width: auto;
+      text-align: left;
+      font-size: 14px;
+    }
+    #message {
+      bottom: 1.5rem;
+      width: min(88vw, 700px);
+      font-size: 15px;
+    }
+    .hidden { display: none; }
+    .reticle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 18px;
+      height: 18px;
+      margin-left: -9px;
+      margin-top: -9px;
+      border: 2px solid rgba(255,255,255,0.9);
+      border-radius: 50%;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay">
+    <div id="splash" class="panel">
+      <h1 style="margin:0 0 8px;">Eye's On</h1>
+      <div>Created by <strong>Your Name</strong></div>
+      <div>CMPT 461 - Final Individual Project</div>
+      <div style="margin-top:8px; opacity:0.9;">Built with A-Frame for mobile VR</div>
+    </div>
+
+    <div id="hud" class="panel hidden">
+      <div><strong>Level:</strong> <span id="hud-level">1</span></div>
+      <div><strong>Score:</strong> <span id="hud-score">0</span></div>
+      <div><strong>Time:</strong> <span id="hud-time">0</span>s</div>
+      <div><strong>Danger:</strong> <span id="hud-danger">0</span>%</div>
+    </div>
+
+    <div id="message" class="panel hidden">Keep the statue inside the center reticle. Look back quickly for bonus points.</div>
+    <div id="reticle-ui" class="reticle hidden"></div>
+  </div>
+
+  <a-scene renderer="antialias: true; colorManagement: true" background="color: #0f0f14" vr-mode-ui="enabled: true" embedded>
+    <a-assets>
+      <img id="floorTex" src="https://cdn.aframe.io/a-painter/images/floor.jpg" crossorigin="anonymous">
+      <img id="wallTex" src="https://cdn.aframe.io/a-painter/images/floor.jpg" crossorigin="anonymous">
+      <img id="stoneTex" src="https://cdn.aframe.io/a-painter/images/floor.jpg" crossorigin="anonymous">
+      <img id="woodTex" src="https://cdn.aframe.io/a-painter/images/floor.jpg" crossorigin="anonymous">
+      <audio id="bgm" src="https://cdn.aframe.io/basic-guide/audio/backgroundnoise.wav" preload="auto"></audio>
+      <audio id="warnSfx" src="https://cdn.aframe.io/basic-guide/audio/backgroundnoise.wav" preload="auto"></audio>
+    </a-assets>
+
+    <a-entity id="rig" position="0 1.6 4">
+      <a-camera id="camera" look-controls wasd-controls-enabled="false">
+        <a-cursor
+          id="cursor"
+          color="#FFFFFF"
+          fuse="true"
+          fuse-timeout="1200"
+          raycaster="objects: .gazeable"
+        ></a-cursor>
+      </a-camera>
+    </a-entity>
+
+    <a-entity light="type: ambient; intensity: 0.7"></a-entity>
+    <a-entity id="mainLight" light="type: point; intensity: 1.2; distance: 25; castShadow: true" position="0 4 0"></a-entity>
+
+    <a-plane rotation="-90 0 0" width="18" height="18" src="#floorTex" repeat="6 6"></a-plane>
+    <a-plane position="0 4 -8" width="18" height="8" src="#wallTex" repeat="6 2"></a-plane>
+    <a-plane position="-8 4 0" rotation="0 90 0" width="18" height="8" src="#wallTex" repeat="6 2"></a-plane>
+    <a-plane position="8 4 0" rotation="0 -90 0" width="18" height="8" src="#wallTex" repeat="6 2"></a-plane>
+    <a-plane position="0 8 0" rotation="90 0 0" width="18" height="18" color="#222"></a-plane>
+
+    <a-box position="0 1 -7.8" width="3" height="4" depth="0.3" color="#111"></a-box>
+    <a-box position="-3 0.75 -4" width="2" height="1.5" depth="1" src="#woodTex"></a-box>
+    <a-box position="3 1 -5.5" width="1.2" height="2" depth="0.8" src="#woodTex"></a-box>
+    <a-cylinder position="-4 0.6 -6" radius="0.5" height="1.2" color="#444"></a-cylinder>
+    <a-box position="-4 1.35 -6" width="0.6" height="0.1" depth="0.6" color="#b38b59"></a-box>
+
+    <a-entity id="menuRoot" position="0 1.8 -2.4">
+      <a-plane width="2.8" height="2.7" color="#111" opacity="0.88"></a-plane>
+      <a-text value="Eye's On Setup" align="center" width="4" position="0 1.05 0.02"></a-text>
+
+      <a-text id="musicLabel" value="Music: ON" align="center" width="3.3" position="0 0.55 0.02"></a-text>
+      <a-box class="gazeable menu-btn" id="musicBtn" position="0 0.32 0.05" depth="0.08" height="0.28" width="1.2" color="#2f7f5f"></a-box>
+      <a-text value="Toggle Music" align="center" width="3" position="0 0.32 0.11"></a-text>
+
+      <a-text id="sfxLabel" value="SFX: ON" align="center" width="3.3" position="0 -0.05 0.02"></a-text>
+      <a-box class="gazeable menu-btn" id="sfxBtn" position="0 -0.28 0.05" depth="0.08" height="0.28" width="1.2" color="#2f5f9f"></a-box>
+      <a-text value="Toggle SFX" align="center" width="3" position="0 -0.28 0.11"></a-text>
+
+      <a-text id="difficultyLabel" value="Difficulty: EASY" align="center" width="3.4" position="0 -0.65 0.02"></a-text>
+      <a-box class="gazeable menu-btn" id="difficultyBtn" position="0 -0.88 0.05" depth="0.08" height="0.28" width="1.3" color="#8a6a2f"></a-box>
+      <a-text value="Toggle Difficulty" align="center" width="3.2" position="0 -0.88 0.11"></a-text>
+
+      <a-box class="gazeable menu-btn" id="startBtn" position="0 -1.33 0.05" depth="0.08" height="0.34" width="1.5" color="#9c2f46"></a-box>
+      <a-text value="Start Game" align="center" width="3" position="0 -1.33 0.11"></a-text>
+    </a-entity>
+
+    <a-entity id="levelCompleteUI" position="0 1.8 -2.4" visible="false">
+      <a-plane width="2.8" height="1.5" color="#111" opacity="0.9"></a-plane>
+      <a-text id="levelCompleteText" value="Level Complete" align="center" width="4" position="0 0.3 0.02"></a-text>
+      <a-box class="gazeable" id="nextLevelBtn" position="0 -0.35 0.05" depth="0.08" height="0.32" width="1.5" color="#2f7f5f"></a-box>
+      <a-text id="nextLevelText" value="Next Level" align="center" width="3" position="0 -0.35 0.11"></a-text>
+    </a-entity>
+
+    <a-entity id="gameOverUI" position="0 1.8 -2.4" visible="false">
+      <a-plane width="2.8" height="1.6" color="#111" opacity="0.9"></a-plane>
+      <a-text id="gameOverText" value="Game Over" align="center" width="4" position="0 0.35 0.02"></a-text>
+      <a-box class="gazeable" id="restartBtn" position="0 -0.3 0.05" depth="0.08" height="0.32" width="1.5" color="#7f3f2f"></a-box>
+      <a-text value="Restart" align="center" width="3" position="0 -0.3 0.11"></a-text>
+    </a-entity>
+
+    <a-entity id="statueRoot" visible="false">
+      <a-cylinder id="pedestal" position="0 0.4 -3" radius="0.55" height="0.8" color="#5e5e5e"></a-cylinder>
+      <a-entity id="statue" position="0 1.35 -3">
+        <a-cylinder radius="0.22" height="0.8" src="#stoneTex"></a-cylinder>
+        <a-sphere position="0 0.56 0" radius="0.23" src="#stoneTex"></a-sphere>
+        <a-box position="0 0.18 0.18" width="0.12" height="0.12" depth="0.12" color="#2b2b2b"></a-box>
+      </a-entity>
+    </a-entity>
+
+    <a-sky color="#0d0d12"></a-sky>
+  </a-scene>
+
+  <script>
+    const state = {
+      started: false,
+      musicOn: true,
+      sfxOn: true,
+      difficulty: 'easy',
+      level: 1,
+      score: 0,
+      danger: 0,
+      timer: 0,
+      gameLoop: null,
+      statueLoop: null,
+      levelDuration: 35,
+      outOfSightFrames: 0,
+      lastSeen: true,
+      levelConfigs: {
+        1: {
+          name: 'Level 1 - Haunted Study',
+          statueInterval: 2600,
+          dangerRate: 1.4,
+          decayRate: 2.1,
+          lightIntensity: 1.15,
+          positions: [
+            { x: 0, z: -3 },
+            { x: -2.8, z: -5.2 },
+            { x: 2.7, z: -5.5 },
+            { x: -4.8, z: -3.8 },
+            { x: 4.8, z: -3.8 },
+            { x: 0, z: -6.2 }
+          ]
+        },
+        2: {
+          name: 'Level 2 - Basement Shrine',
+          statueInterval: 1500,
+          dangerRate: 2.6,
+          decayRate: 1.6,
+          lightIntensity: 0.7,
+          positions: [
+            { x: 0, z: -6.5 },
+            { x: -5.5, z: -4.4 },
+            { x: 5.5, z: -4.4 },
+            { x: -3.6, z: -2.6 },
+            { x: 3.6, z: -2.6 },
+            { x: 0, z: -3.1 }
+          ]
+        }
+      }
+    };
+
+    const splash = document.getElementById('splash');
+    const hud = document.getElementById('hud');
+    const message = document.getElementById('message');
+    const reticleUI = document.getElementById('reticle-ui');
+    const hudLevel = document.getElementById('hud-level');
+    const hudScore = document.getElementById('hud-score');
+    const hudTime = document.getElementById('hud-time');
+    const hudDanger = document.getElementById('hud-danger');
+
+    const musicLabel = document.getElementById('musicLabel');
+    const sfxLabel = document.getElementById('sfxLabel');
+    const difficultyLabel = document.getElementById('difficultyLabel');
+
+    const scene = document.querySelector('a-scene');
+    const menuRoot = document.getElementById('menuRoot');
+    const statueRoot = document.getElementById('statueRoot');
+    const pedestal = document.getElementById('pedestal');
+    const mainLight = document.getElementById('mainLight');
+    const camera = document.getElementById('camera');
+    const bgm = document.getElementById('bgm');
+    const warnSfx = document.getElementById('warnSfx');
+
+    const levelCompleteUI = document.getElementById('levelCompleteUI');
+    const levelCompleteText = document.getElementById('levelCompleteText');
+    const nextLevelBtn = document.getElementById('nextLevelBtn');
+    const nextLevelText = document.getElementById('nextLevelText');
+
+    const gameOverUI = document.getElementById('gameOverUI');
+    const gameOverText = document.getElementById('gameOverText');
+    const restartBtn = document.getElementById('restartBtn');
+
+    setTimeout(() => {
+      splash.classList.add('hidden');
+    }, 2600);
+
+    function updateMenuLabels() {
+      musicLabel.setAttribute('value', `Music: ${state.musicOn ? 'ON' : 'OFF'}`);
+      sfxLabel.setAttribute('value', `SFX: ${state.sfxOn ? 'ON' : 'OFF'}`);
+      difficultyLabel.setAttribute('value', `Difficulty: ${state.difficulty.toUpperCase()}`);
+    }
+
+    function playBgm() {
+      if (!state.musicOn) return;
+      bgm.loop = true;
+      bgm.volume = 0.2;
+      bgm.play().catch(() => {});
+    }
+
+    function stopBgm() {
+      bgm.pause();
+      bgm.currentTime = 0;
+    }
+
+    function playWarn() {
+      if (!state.sfxOn) return;
+      warnSfx.volume = 0.12;
+      warnSfx.currentTime = 0;
+      warnSfx.play().catch(() => {});
+    }
+
+    function setMessage(text) {
+      message.textContent = text;
+      message.classList.remove('hidden');
+    }
+
+    function clearLoops() {
+      clearInterval(state.gameLoop);
+      clearInterval(state.statueLoop);
+      state.gameLoop = null;
+      state.statueLoop = null;
+    }
+
+    function updateHUD() {
+      hudLevel.textContent = state.level;
+      hudScore.textContent = Math.floor(state.score);
+      hudTime.textContent = Math.floor(state.timer);
+      hudDanger.textContent = Math.min(100, Math.floor(state.danger));
+    }
+
+    function chooseStatuePosition() {
+      const cfg = state.levelConfigs[state.level];
+      const pool = cfg.positions;
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      pedestal.setAttribute('position', `${pick.x} 0.4 ${pick.z}`);
+      document.getElementById('statue').setAttribute('position', `${pick.x} 1.35 ${pick.z}`);
+    }
+
+    function isStatueCentered() {
+      const statuePos = new AFRAME.THREE.Vector3();
+      const camPos = new AFRAME.THREE.Vector3();
+      const camDir = new AFRAME.THREE.Vector3();
+
+      document.getElementById('statue').object3D.getWorldPosition(statuePos);
+      camera.object3D.getWorldPosition(camPos);
+      camera.object3D.getWorldDirection(camDir);
+
+      const toStatue = statuePos.clone().sub(camPos).normalize();
+      const dot = camDir.dot(toStatue);
+      return dot > 0.965;
+    }
+
+    function startLevel(level) {
+      clearLoops();
+      state.level = level;
+      state.timer = 0;
+      state.danger = 0;
+      state.outOfSightFrames = 0;
+      state.lastSeen = true;
+      state.started = true;
+
+      const cfg = state.levelConfigs[level];
+      mainLight.setAttribute('light', `type: point; intensity: ${cfg.lightIntensity}; distance: 25; castShadow: true`);
+
+      menuRoot.setAttribute('visible', false);
+      levelCompleteUI.setAttribute('visible', false);
+      gameOverUI.setAttribute('visible', false);
+      statueRoot.setAttribute('visible', true);
+      hud.classList.remove('hidden');
+      reticleUI.classList.remove('hidden');
+      setMessage(cfg.name);
+      chooseStatuePosition();
+      updateHUD();
+      playBgm();
+
+      const diffMul = state.difficulty === 'hard' ? 1.35 : 1.0;
+      const statueInterval = cfg.statueInterval / diffMul;
+      const dangerRate = cfg.dangerRate * diffMul;
+      const decayRate = cfg.decayRate;
+
+      state.statueLoop = setInterval(() => {
+        chooseStatuePosition();
+      }, statueInterval);
+
+      state.gameLoop = setInterval(() => {
+        state.timer += 0.1;
+        state.score += 3;
+
+        const seen = isStatueCentered();
+        if (seen) {
+          if (!state.lastSeen) {
+            state.score += 25;
+          }
+          state.danger = Math.max(0, state.danger - decayRate);
+          state.outOfSightFrames = 0;
+        } else {
+          state.outOfSightFrames += 1;
+          state.danger += dangerRate;
+          if (state.outOfSightFrames === 8) playWarn();
+        }
+
+        state.lastSeen = seen;
+        updateHUD();
+
+        if (state.danger >= 100) {
+          gameOver();
+          return;
+        }
+
+        if (state.timer >= state.levelDuration) {
+          levelComplete();
+        }
+      }, 100);
+    }
+
+    function levelComplete() {
+      clearLoops();
+      statueRoot.setAttribute('visible', false);
+      if (state.level === 1) {
+        levelCompleteText.setAttribute('value', `Level 1 Complete\nScore: ${Math.floor(state.score)}`);
+        nextLevelText.setAttribute('value', 'Start Level 2');
+        levelCompleteUI.setAttribute('visible', true);
+        setMessage('Good. The room changes now. Level 2 is faster and darker.');
+      } else {
+        gameOverText.setAttribute('value', `You Survived Both Levels\nFinal Score: ${Math.floor(state.score)}`);
+        gameOverUI.setAttribute('visible', true);
+        setMessage('Run complete. Gaze at Restart to play again.');
+      }
+    }
+
+    function gameOver() {
+      clearLoops();
+      statueRoot.setAttribute('visible', false);
+      gameOverText.setAttribute('value', `Game Over\nFinal Score: ${Math.floor(state.score)}`);
+      gameOverUI.setAttribute('visible', true);
+      setMessage('The statue slipped out of view for too long.');
+    }
+
+    function resetToMenu() {
+      clearLoops();
+      state.started = false;
+      state.score = 0;
+      state.timer = 0;
+      state.danger = 0;
+      state.level = 1;
+      updateHUD();
+      stopBgm();
+      statueRoot.setAttribute('visible', false);
+      gameOverUI.setAttribute('visible', false);
+      levelCompleteUI.setAttribute('visible', false);
+      menuRoot.setAttribute('visible', true);
+      hud.classList.add('hidden');
+      reticleUI.classList.add('hidden');
+      setMessage('Use gaze to select menu options, then start the game.');
+    }
+
+    document.getElementById('musicBtn').addEventListener('click', () => {
+      state.musicOn = !state.musicOn;
+      updateMenuLabels();
+      if (!state.musicOn) stopBgm();
+      else if (state.started) playBgm();
+    });
+
+    document.getElementById('sfxBtn').addEventListener('click', () => {
+      state.sfxOn = !state.sfxOn;
+      updateMenuLabels();
+    });
+
+    document.getElementById('difficultyBtn').addEventListener('click', () => {
+      state.difficulty = state.difficulty === 'easy' ? 'hard' : 'easy';
+      updateMenuLabels();
+    });
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+      startLevel(1);
+    });
+
+    nextLevelBtn.addEventListener('click', () => {
+      startLevel(2);
+    });
+
+    restartBtn.addEventListener('click', () => {
+      resetToMenu();
+    });
+
+    scene.addEventListener('loaded', () => {
+      updateMenuLabels();
+      setMessage('Gaze at the buttons to configure the game. Designed for mobile VR.');
+    });
+  </script>
+</body>
+</html>
