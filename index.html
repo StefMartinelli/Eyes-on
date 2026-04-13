@@ -546,10 +546,38 @@
 let audioCtx = null;
 let musicOscillators = [];
 let musicGain = null;
+let musicTimers = [];
 
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
+}
+
+function playMusicNote(ctx, freq, when, length, volume) {
+  if (!musicGain) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(freq, when);
+  gain.gain.setValueAtTime(0.0001, when);
+  gain.gain.exponentialRampToValueAtTime(volume, when + 0.025);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + length);
+  osc.connect(gain);
+  gain.connect(musicGain);
+  osc.start(when);
+  osc.stop(when + length + 0.05);
+}
+
+function scheduleMusicMotif() {
+  if (!state.musicOn || !musicGain) return;
+  const ctx = getAudioCtx();
+  const motif = state.level === 1
+    ? [220, 246.94, 261.63, 329.63, 293.66, 246.94]
+    : [174.61, 196, 233.08, 261.63, 220, 196];
+
+  motif.forEach((freq, i) => {
+    playMusicNote(ctx, freq, ctx.currentTime + i * 0.42, 0.34, 0.035);
+  });
 }
 
 // Simple ambient drone music — two detuned oscillators + slow LFO
@@ -557,8 +585,11 @@ function startMusic() {
   if (!state.musicOn) return;
   stopMusic();
   const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') ctx.resume();
+
   musicGain = ctx.createGain();
-  musicGain.gain.setValueAtTime(0.08, ctx.currentTime);
+  musicGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  musicGain.gain.exponentialRampToValueAtTime(0.075, ctx.currentTime + 0.4);
   musicGain.connect(ctx.destination);
 
   const freqs = state.level === 1
@@ -581,13 +612,32 @@ function startMusic() {
     osc.start();
     musicOscillators.push(osc, lfo);
   });
+
+  scheduleMusicMotif();
+  musicTimers.push(setInterval(scheduleMusicMotif, 3600));
 }
 
 function stopMusic() {
+  musicTimers.forEach(id => clearInterval(id));
+  musicTimers = [];
   musicOscillators.forEach(o => { try { o.stop(); } catch(e){} });
   musicOscillators = [];
   if (musicGain) { musicGain.disconnect(); musicGain = null; }
 }
+
+function syncMusic() {
+  if (state.musicOn) startMusic();
+  else stopMusic();
+}
+
+function unlockAudio() {
+  const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') ctx.resume();
+}
+
+['pointerdown', 'touchstart', 'keydown'].forEach(eventName => {
+  window.addEventListener(eventName, unlockAudio, { once: true });
+});
 
 // One-shot SFX tones
 function playSfx(type) {
@@ -891,8 +941,8 @@ function showEnd(title, color, l1, l2, l3, l4) {
 // ─── Return to menu ──────────────────────────────────────────────────────────
 function returnToMenu() {
   clearLoops();
-  stopMusic();
   state.phase = 'menu';
+  state.level = 1;
   hideAllBonusOrbs();
   endRoot.setAttribute('visible', false);
   hud.classList.add('hidden');
@@ -903,6 +953,7 @@ function returnToMenu() {
   setGazeProgress(0);
   dangerFill.style.width = '0%';
   updateMenuText();
+  syncMusic();
   setMsg('Gaze at a button and hold (1 sec) to select.');
 }
 
@@ -1037,7 +1088,7 @@ function setupGazeController() {
   };
 
   const menuActions = {
-    music:      () => { state.musicOn = !state.musicOn; updateMenuText(); playSfx('select'); if(state.musicOn) startMusic(); else stopMusic(); },
+    music:      () => { state.musicOn = !state.musicOn; updateMenuText(); playSfx('select'); syncMusic(); },
     sfx:        () => { state.sfxOn   = !state.sfxOn;   updateMenuText(); playSfx('select'); },
     difficulty: () => { state.difficulty = state.difficulty === 'easy' ? 'hard' : 'easy'; updateMenuText(); playSfx('select'); },
     start:      () => { playSfx('select'); startLevel(1); },
