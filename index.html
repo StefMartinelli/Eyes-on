@@ -1,310 +1,877 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Eye's On - Mobile VR v9</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Eye's On — Mobile VR</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
-    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: Arial, sans-serif; }
-    a-scene { position: fixed; inset: 0; width: 100vw; height: 100vh; }
-    #overlay { position: fixed; inset: 0; color: white; z-index: 20; pointer-events: none; }
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;font-family:'Courier New',monospace;}
+    a-scene{position:fixed;inset:0;width:100vw;height:100vh;}
+    #overlay{position:fixed;inset:0;color:#fff;z-index:20;pointer-events:none;}
 
-    .panel {
-      position: absolute; left: 50%; transform: translateX(-50%);
-      background: rgba(0,0,0,0.72); border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 12px; padding: 12px 16px; text-align: center; backdrop-filter: blur(4px);
+    /* ── Splash ── */
+    #splash{
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      background:rgba(5,0,15,0.92);border:1px solid rgba(160,100,255,0.4);
+      border-radius:16px;padding:24px 32px;text-align:center;
+      backdrop-filter:blur(8px);width:min(88vw,480px);
     }
-    #splash { top: 8%; width: min(92vw, 540px); }
-    #hud    { top: 1rem; left: 1rem; transform: none; text-align: left; font-size: 14px; }
-    #message { bottom: 1.2rem; width: min(90vw, 700px); font-size: 15px; }
+    #splash h1{margin:0 0 6px;font-size:2.2rem;letter-spacing:4px;color:#c8a0ff;text-shadow:0 0 20px #8040ff;}
+    #splash .sub{font-size:0.85rem;opacity:0.7;margin-top:4px;}
 
-    #dangerBarWrap {
-      position: absolute; bottom: 0.45rem; left: 50%; transform: translateX(-50%);
-      width: min(90vw, 700px); height: 6px; border-radius: 999px;
-      background: rgba(255,255,255,0.12); overflow: hidden;
+    /* ── HUD — always visible scoreboard ── */
+    #hud{
+      position:absolute;top:0.8rem;left:0.8rem;
+      background:rgba(0,0,0,0.65);border:1px solid rgba(255,255,255,0.15);
+      border-radius:10px;padding:8px 12px;font-size:13px;line-height:1.7;
+      backdrop-filter:blur(4px);
     }
-    #dangerBarFill {
-      height: 100%; width: 0%;
-      background: linear-gradient(90deg, #4caf50, #ff5722);
-      transition: width 0.1s linear; border-radius: 999px;
-    }
-    .hidden { display: none; }
+    #hud.hidden{display:none;}
 
-    /* Reticle */
-    #reticle-ui {
-      position: absolute; top: 50%; left: 50%;
-      width: 24px; height: 24px; margin-left: -12px; margin-top: -12px;
-      border: 2.5px solid rgba(255,255,255,0.95); border-radius: 50%;
-      box-sizing: border-box; transition: border-color 0.12s, box-shadow 0.12s;
+    /* ── Message bar ── */
+    #message{
+      position:absolute;bottom:1.4rem;left:50%;transform:translateX(-50%);
+      background:rgba(0,0,0,0.7);border:1px solid rgba(255,255,255,0.15);
+      border-radius:10px;padding:8px 16px;font-size:14px;text-align:center;
+      width:min(88vw,660px);backdrop-filter:blur(4px);
     }
-    #reticle-fill {
-      position: absolute; left: 50%; top: 50%;
-      width: 6px; height: 6px; margin-left: -3px; margin-top: -3px;
-      border-radius: 50%; background: rgba(255,255,255,0.95); transition: background 0.12s;
+
+    /* ── Danger bar ── */
+    #dangerBarWrap{
+      position:absolute;bottom:0.5rem;left:50%;transform:translateX(-50%);
+      width:min(88vw,660px);height:7px;border-radius:999px;
+      background:rgba(255,255,255,0.1);overflow:hidden;
     }
-    #gaze-bar-wrap {
-      position: absolute; left: 50%; top: calc(50% + 18px);
-      width: 84px; height: 6px; margin-left: -42px;
-      border-radius: 999px; background: rgba(255,255,255,0.18); overflow: hidden;
+    #dangerBarFill{
+      height:100%;width:0%;border-radius:999px;
+      background:linear-gradient(90deg,#44dd66,#ffcc00,#ff3300);
+      transition:width 0.1s linear;
     }
-    #gaze-bar { width: 0%; height: 100%; background: rgba(255,220,120,0.95); transition: width 0.05s linear; }
+
+    /* ── Bonus flash ── */
+    #bonusFlash{
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-120%);
+      font-size:1.4rem;font-weight:bold;color:#ffdd44;
+      text-shadow:0 0 12px #ffaa00;opacity:0;pointer-events:none;
+      transition:opacity 0.15s;
+    }
+
+    .hidden{display:none;}
+
+    /* ── Reticle ── */
+    #reticle-ui{
+      position:absolute;top:50%;left:50%;
+      width:24px;height:24px;margin-left:-12px;margin-top:-12px;
+      border:2.5px solid rgba(255,255,255,0.9);border-radius:50%;
+      box-sizing:border-box;transition:border-color 0.1s,box-shadow 0.1s;
+    }
+    #reticle-fill{
+      position:absolute;left:50%;top:50%;
+      width:6px;height:6px;margin-left:-3px;margin-top:-3px;
+      border-radius:50%;background:rgba(255,255,255,0.9);transition:background 0.1s;
+    }
+    #gaze-bar-wrap{
+      position:absolute;left:50%;top:calc(50% + 18px);
+      width:84px;height:6px;margin-left:-42px;
+      border-radius:999px;background:rgba(255,255,255,0.15);overflow:hidden;
+    }
+    #gaze-bar{width:0%;height:100%;background:rgba(255,210,80,0.95);transition:width 0.05s linear;}
   </style>
 </head>
 <body>
+
+<!-- ═══════════════════ HTML OVERLAY ═══════════════════ -->
 <div id="overlay">
-  <div id="splash" class="panel">
-    <h1 style="margin:0 0 8px;">Eye's On</h1>
-    <div>Created by <strong>Your Name</strong></div>
-    <div>CMPT 461 — Final Individual Project</div>
-    <div style="margin-top:8px;opacity:0.8;">Build v9</div>
+
+  <!-- Flash screen — rubric: name + credentials -->
+  <div id="splash">
+    <h1>EYE'S ON</h1>
+    <div style="color:#c8a0ff;font-size:1rem;letter-spacing:2px;">THE WATCHER</div>
+    <div style="margin:14px 0 6px;border-top:1px solid rgba(255,255,255,0.15);padding-top:10px;">
+      <div>Created by <strong>Your Name</strong></div>
+      <div class="sub">CMPT 461 — Final Individual Project</div>
+      <div class="sub" style="margin-top:4px;">Build v10</div>
+    </div>
+    <div style="margin-top:12px;font-size:0.75rem;opacity:0.5;">Loading scene…</div>
   </div>
 
-  <div id="hud" class="panel hidden">
-    <div><strong>Build:</strong> v9</div>
-    <div><strong>Level:</strong> <span id="hud-level">1</span></div>
-    <div><strong>Score:</strong> <span id="hud-score">0</span></div>
-    <div><strong>Time:</strong> <span id="hud-time">0</span>s</div>
-    <div><strong>Danger:</strong> <span id="hud-danger">0</span>%</div>
-    <div><strong>Locked:</strong> <span id="hud-locked">NO</span></div>
+  <!-- Scoreboard HUD — always visible during play (rubric) -->
+  <div id="hud" class="hidden">
+    <div>⚡ <strong>Score:</strong> <span id="hud-score">0</span></div>
+    <div>🏆 <strong>Level:</strong> <span id="hud-level">1</span></div>
+    <div>⏱ <strong>Time:</strong> <span id="hud-time">0</span>s</div>
+    <div>🔥 <strong>Danger:</strong> <span id="hud-danger">0</span>%</div>
+    <div>👁 <strong>Lock:</strong> <span id="hud-locked">NO</span></div>
+    <div>💎 <strong>Bonus:</strong> <span id="hud-bonus">0</span></div>
   </div>
 
-  <div id="message" class="panel">Look at a button and hold your gaze to select it.</div>
+  <!-- Message bar -->
+  <div id="message">Loading…</div>
 
+  <!-- Bonus flash label -->
+  <div id="bonusFlash">+BONUS!</div>
+
+  <!-- Reticle -->
   <div id="reticle-ui"><div id="reticle-fill"></div></div>
   <div id="gaze-bar-wrap"><div id="gaze-bar"></div></div>
+
+  <!-- Danger bar -->
   <div id="dangerBarWrap"><div id="dangerBarFill"></div></div>
 </div>
 
-<!-- ══════════════════ A-FRAME SCENE ══════════════════ -->
-<a-scene vr-mode-ui="enabled: true" background="color: #1b1027">
+<!-- ═══════════════════ A-FRAME SCENE ═══════════════════ -->
+<a-scene
+  vr-mode-ui="enabled: true"
+  fog="type: linear; color: #1b1027; near: 8; far: 20"
+  background="color: #1b1027"
+  id="mainScene">
 
+  <!-- ── Audio (rubric: SFX + mutable music) ──
+       All tones generated via Web Audio — no external files needed.
+       JS handles play/stop based on state.musicOn / state.sfxOn.
+  -->
+  <a-entity id="audioRoot"></a-entity>
+
+  <!-- ── Camera rig at floor level; rig y=1.6 = eye height ── -->
   <a-entity id="rig" position="0 1.6 0">
     <a-camera id="camera" look-controls wasd-controls-enabled="false">
-      <!--
-        ONE cursor/raycaster that targets BOTH menu buttons AND the statue.
-        We read intersections manually in JS — no fuse, no auto-click.
-      -->
-      <a-cursor
-        id="cursor3d"
-        fuse="false"
+      <!-- Single raycaster for menus + statue + bonus orbs -->
+      <a-cursor id="cursor3d" fuse="false"
         raycaster="objects: .raycast-target; far: 30; interval: 50"
-        color="transparent" opacity="0"
-      ></a-cursor>
+        color="transparent" opacity="0">
+      </a-cursor>
     </a-camera>
   </a-entity>
 
-  <a-entity light="type: ambient; intensity: 0.75"></a-entity>
-  <a-entity id="mainLight" light="type: point; intensity: 1.2; distance: 25" position="0 4 0"></a-entity>
+  <!-- ── Lighting ── -->
+  <a-entity light="type: ambient; intensity: 0.5; color: #ffe8cc" id="ambientLight"></a-entity>
+  <a-entity id="mainLight"
+    light="type: point; intensity: 1.4; distance: 22; color: #ffcc88"
+    position="0 5 0">
+  </a-entity>
+  <!-- Accent fill lights -->
+  <a-entity light="type: point; intensity: 0.6; distance: 12; color: #ff8844" position="-6 3 -4" id="accentL1"></a-entity>
+  <a-entity light="type: point; intensity: 0.6; distance: 12; color: #ff6622" position="6 3 -4"  id="accentL2"></a-entity>
 
-  <!-- Room -->
-  <a-plane rotation="-90 0 0" width="18" height="18" color="#4d4d5b"></a-plane>
-  <a-plane position="0 4 -8"  width="18" height="8"  color="#2b2b35"></a-plane>
-  <a-plane position="-8 4 0"  rotation="0 90 0"  width="18" height="8" color="#32323d"></a-plane>
-  <a-plane position="8 4 0"   rotation="0 -90 0" width="18" height="8" color="#32323d"></a-plane>
-  <a-plane position="0 8 0"   rotation="90 0 0"  width="18" height="18" color="#222"></a-plane>
+  <!-- ══════════════════════════════════════════════════════
+       LEVEL 1 SCENE — "The Haunted Study"
+       Warm candlelit library. Shown during level 1.
+       ══════════════════════════════════════════════════════ -->
+  <a-entity id="sceneL1" visible="true">
 
-  <!-- Props -->
-  <a-box position="-3 0.75 -4"  width="2"   height="1.5" depth="1"   color="#6f4e37"></a-box>
-  <a-box position="3 1 -5.5"    width="1.2" height="2"   depth="0.8" color="#7f5a3c"></a-box>
-  <a-cylinder position="-4 0.6 -6" radius="0.5" height="1.2" color="#444"></a-cylinder>
-  <a-box position="-4 1.35 -6"  width="0.6" height="0.1" depth="0.6" color="#b38b59"></a-box>
+    <!-- Floor — dark wood texture via canvas material -->
+    <a-plane id="floor" rotation="-90 0 0" width="20" height="20"
+      material="shader:flat;color:#2a1a0a;repeat:4 4"
+      position="0 0 0">
+    </a-plane>
 
-  <!-- ══════════ SETUP MENU (3D, world-fixed) ══════════ -->
+    <!-- Back wall -->
+    <a-plane position="0 4 -9" width="20" height="8"
+      material="shader:flat;color:#2e1f10">
+    </a-plane>
+    <!-- Side walls -->
+    <a-plane position="-9 4 0" rotation="0 90 0" width="20" height="8"
+      material="shader:flat;color:#281a0c">
+    </a-plane>
+    <a-plane position="9 4 0"  rotation="0 -90 0" width="20" height="8"
+      material="shader:flat;color:#281a0c">
+    </a-plane>
+    <!-- Ceiling with beams feel -->
+    <a-plane position="0 8 0" rotation="90 0 0" width="20" height="20"
+      material="shader:flat;color:#1a0f05">
+    </a-plane>
+
+    <!-- ── Bookshelf L (textured via repeating pattern) ── -->
+    <a-box position="-7.5 2 -5" width="0.4" height="4" depth="2.2"
+      material="color:#3d2008;roughness:0.9"></a-box>
+    <!-- Book rows — stacked coloured boxes simulate books -->
+    <a-box position="-7.2 0.5 -5" width="0.2" height="0.8" depth="2"
+      material="color:#8b1a1a"></a-box>
+    <a-box position="-7.2 1.4 -5" width="0.2" height="0.8" depth="2"
+      material="color:#1a3a8b"></a-box>
+    <a-box position="-7.2 2.3 -5" width="0.2" height="0.8" depth="2"
+      material="color:#1a6b2a"></a-box>
+    <a-box position="-7.2 3.2 -5" width="0.2" height="0.7" depth="2"
+      material="color:#7a5a1a"></a-box>
+
+    <!-- ── Bookshelf R ── -->
+    <a-box position="7.5 2 -5"  width="0.4" height="4" depth="2.2"
+      material="color:#3d2008;roughness:0.9"></a-box>
+    <a-box position="7.2 0.5 -5" width="0.2" height="0.8" depth="2"
+      material="color:#6b1a6b"></a-box>
+    <a-box position="7.2 1.4 -5" width="0.2" height="0.8" depth="2"
+      material="color:#8b4a1a"></a-box>
+    <a-box position="7.2 2.3 -5" width="0.2" height="0.8" depth="2"
+      material="color:#1a5a6b"></a-box>
+    <a-box position="7.2 3.2 -5" width="0.2" height="0.7" depth="2"
+      material="color:#3a3a1a"></a-box>
+
+    <!-- ── Writing desk ── -->
+    <a-box position="-4 0.8 -4" width="2.5" height="0.1" depth="1.2"
+      material="color:#5a3010"></a-box>
+    <a-box position="-4.9 0.4 -4.4" width="0.12" height="0.75" depth="0.12"
+      material="color:#3d2008"></a-box>
+    <a-box position="-3.1 0.4 -4.4" width="0.12" height="0.75" depth="0.12"
+      material="color:#3d2008"></a-box>
+    <a-box position="-4.9 0.4 -3.6" width="0.12" height="0.75" depth="0.12"
+      material="color:#3d2008"></a-box>
+    <a-box position="-3.1 0.4 -3.6" width="0.12" height="0.75" depth="0.12"
+      material="color:#3d2008"></a-box>
+    <!-- Open book on desk -->
+    <a-box position="-4 0.87 -4" width="0.6" height="0.02" depth="0.45"
+      material="color:#f0e8d0"></a-box>
+
+    <!-- ── Armchair ── -->
+    <a-box position="4 0.5 -3.5" width="1.2" height="1" depth="1.2"
+      material="color:#6b1a0a"></a-box>
+    <a-box position="4 1.1 -4.0" width="1.2" height="0.9" depth="0.15"
+      material="color:#6b1a0a"></a-box>
+    <a-box position="3.5 0.9 -3.5" width="0.15" height="0.7" depth="1"
+      material="color:#6b1a0a"></a-box>
+    <a-box position="4.5 0.9 -3.5" width="0.15" height="0.7" depth="1"
+      material="color:#6b1a0a"></a-box>
+
+    <!-- ── Fireplace (back wall centre) ── -->
+    <a-box position="0 1.2 -8.7" width="2.2" height="2.4" depth="0.3"
+      material="color:#4a3020"></a-box>
+    <a-box position="0 0.6 -8.55" width="1.6" height="1.2" depth="0.1"
+      material="color:#1a0a00"></a-box>
+    <!-- Fire glow — emissive orange box -->
+    <a-box position="0 0.5 -8.5" width="1.2" height="0.7" depth="0.05"
+      material="color:#ff5500;emissive:#ff3300;emissiveIntensity:0.8;opacity:0.85;transparent:true">
+    </a-box>
+    <a-entity light="type:point;intensity:0.9;distance:8;color:#ff6600" position="0 0.8 -7.8" id="fireLight"></a-entity>
+
+    <!-- ── Candles on wall sconces ── -->
+    <a-cylinder position="-6 2.8 -8.6" radius="0.05" height="0.4" material="color:#f5f0d0"></a-cylinder>
+    <a-sphere    position="-6 3.1 -8.6" radius="0.06" material="color:#ffee88;emissive:#ffcc44;emissiveIntensity:1"></a-sphere>
+    <a-entity light="type:point;intensity:0.5;distance:4;color:#ffcc66" position="-6 3.2 -8.4"></a-entity>
+
+    <a-cylinder position="6 2.8 -8.6" radius="0.05" height="0.4" material="color:#f5f0d0"></a-cylinder>
+    <a-sphere    position="6 3.1 -8.6" radius="0.06" material="color:#ffee88;emissive:#ffcc44;emissiveIntensity:1"></a-sphere>
+    <a-entity light="type:point;intensity:0.5;distance:4;color:#ffcc66" position="6 3.2 -8.4"></a-entity>
+
+    <!-- ── Globe on stand ── -->
+    <a-cylinder position="5 0.7 -5.5" radius="0.06" height="0.7" material="color:#8b7040"></a-cylinder>
+    <a-sphere    position="5 1.2 -5.5" radius="0.35"
+      material="color:#2266aa;wireframe:false;roughness:0.6;metalness:0.1"></a-sphere>
+
+    <!-- ── Wall clock ── -->
+    <a-cylinder position="0 4.5 -8.75" radius="0.35" height="0.08" rotation="90 0 0"
+      material="color:#c8b880"></a-cylinder>
+    <a-cylinder position="0 4.5 -8.7" radius="0.28" height="0.02" rotation="90 0 0"
+      material="color:#1a1000"></a-cylinder>
+    <!-- Clock hands -->
+    <a-box position="0 4.5 -8.68" width="0.03" height="0.22" depth="0.01"
+      material="color:#ffffee"></a-box>
+    <a-box position="0.08 4.5 -8.68" width="0.03" height="0.16" depth="0.01"
+      rotation="0 0 30" material="color:#ffffee"></a-box>
+
+    <!-- ── Rug on floor ── -->
+    <a-plane position="0 0.01 -4" rotation="-90 0 0" width="5" height="5"
+      material="color:#6b1a2a;roughness:1">
+    </a-plane>
+    <a-plane position="0 0.015 -4" rotation="-90 0 0" width="4.2" height="4.2"
+      material="color:#3a0f18;roughness:1">
+    </a-plane>
+
+    <!-- L1 sky — warm dark -->
+    <a-sky color="#120a1a"></a-sky>
+  </a-entity>
+
+  <!-- ══════════════════════════════════════════════════════
+       LEVEL 2 SCENE — "The Stone Crypt"
+       Cold underground crypt. Shown during level 2.
+       ══════════════════════════════════════════════════════ -->
+  <a-entity id="sceneL2" visible="false">
+
+    <!-- Floor — cold stone -->
+    <a-plane rotation="-90 0 0" width="20" height="20"
+      material="shader:flat;color:#1a2030"
+      position="0 0 0">
+    </a-plane>
+    <!-- Stone tile lines -->
+    <a-plane rotation="-90 0 0" width="19.8" height="0.04" material="shader:flat;color:#0d1520" position="0 0.01 -2"></a-plane>
+    <a-plane rotation="-90 0 0" width="19.8" height="0.04" material="shader:flat;color:#0d1520" position="0 0.01 -5"></a-plane>
+    <a-plane rotation="-90 0 0" width="19.8" height="0.04" material="shader:flat;color:#0d1520" position="0 0.01 -8"></a-plane>
+    <a-plane rotation="-90 90 0" width="19.8" height="0.04" material="shader:flat;color:#0d1520" position="-3 0.01 0"></a-plane>
+    <a-plane rotation="-90 90 0" width="19.8" height="0.04" material="shader:flat;color:#0d1520" position="3 0.01 0"></a-plane>
+
+    <!-- Walls — rough stone -->
+    <a-plane position="0 4 -9" width="20" height="8" material="shader:flat;color:#1e2838"></a-plane>
+    <a-plane position="-9 4 0" rotation="0 90 0"  width="20" height="8" material="shader:flat;color:#1a2230"></a-plane>
+    <a-plane position="9 4 0"  rotation="0 -90 0" width="20" height="8" material="shader:flat;color:#1a2230"></a-plane>
+    <a-plane position="0 8 0"  rotation="90 0 0"  width="20" height="20" material="shader:flat;color:#0d1218"></a-plane>
+
+    <!-- ── Stone pillars (4 corners of play area) ── -->
+    <a-cylinder position="-5 3.5 -3" radius="0.4" height="7" material="color:#2a3545;roughness:1"></a-cylinder>
+    <a-cylinder position="5 3.5 -3"  radius="0.4" height="7" material="color:#2a3545;roughness:1"></a-cylinder>
+    <a-cylinder position="-5 3.5 -7" radius="0.4" height="7" material="color:#2a3545;roughness:1"></a-cylinder>
+    <a-cylinder position="5 3.5 -7"  radius="0.4" height="7" material="color:#2a3545;roughness:1"></a-cylinder>
+    <!-- Pillar caps -->
+    <a-box position="-5 7.1 -3" width="1" height="0.2" depth="1" material="color:#1e2a38"></a-box>
+    <a-box position="5 7.1 -3"  width="1" height="0.2" depth="1" material="color:#1e2a38"></a-box>
+    <a-box position="-5 7.1 -7" width="1" height="0.2" depth="1" material="color:#1e2a38"></a-box>
+    <a-box position="5 7.1 -7"  width="1" height="0.2" depth="1" material="color:#1e2a38"></a-box>
+
+    <!-- ── Sarcophagi ── -->
+    <a-box position="-6.5 0.5 -6" width="1.0" height="0.6" depth="2.2"
+      material="color:#2a3040;roughness:0.95"></a-box>
+    <a-box position="-6.5 0.82 -6" width="0.85" height="0.1" depth="2.0"
+      material="color:#3a4555"></a-box>
+    <a-box position="6.5 0.5 -6" width="1.0" height="0.6" depth="2.2"
+      material="color:#2a3040;roughness:0.95"></a-box>
+    <a-box position="6.5 0.82 -6" width="0.85" height="0.1" depth="2.0"
+      material="color:#3a4555"></a-box>
+
+    <!-- ── Altar at back ── -->
+    <a-box position="0 0.7 -8.2" width="3.0" height="1.4" depth="1.0"
+      material="color:#1a2535;roughness:0.9"></a-box>
+    <a-box position="0 1.42 -8.2" width="3.2" height="0.08" depth="1.1"
+      material="color:#2a3a50"></a-box>
+    <!-- Altar cloth drape -->
+    <a-plane position="0 1.42 -8.18" rotation="-90 0 0" width="2.8" height="0.9"
+      material="color:#22004a;roughness:1"></a-plane>
+    <!-- Altar candles -->
+    <a-cylinder position="-0.8 1.52 -8.2" radius="0.04" height="0.35" material="color:#eeeedd"></a-cylinder>
+    <a-sphere    position="-0.8 1.72 -8.2" radius="0.05" material="color:#88ffcc;emissive:#44ffaa;emissiveIntensity:1"></a-sphere>
+    <a-cylinder position="0.8 1.52 -8.2"  radius="0.04" height="0.35" material="color:#eeeedd"></a-cylinder>
+    <a-sphere    position="0.8 1.72 -8.2"  radius="0.05" material="color:#88ffcc;emissive:#44ffaa;emissiveIntensity:1"></a-sphere>
+    <!-- Altar glow -->
+    <a-entity light="type:point;intensity:0.7;distance:7;color:#44aaff" position="0 2 -8"></a-entity>
+
+    <!-- ── Broken wall torches ── -->
+    <a-box position="-8.6 2.5 -5" width="0.2" height="0.6" depth="0.2" material="color:#4a3820" rotation="0 0 15"></a-box>
+    <a-sphere position="-8.5 2.9 -5" radius="0.1" material="color:#44ffcc;emissive:#22ffaa;emissiveIntensity:1.2"></a-sphere>
+    <a-entity light="type:point;intensity:0.5;distance:5;color:#22ccaa" position="-8 3 -5"></a-entity>
+    <a-box position="8.6 2.5 -5"  width="0.2" height="0.6" depth="0.2" material="color:#4a3820" rotation="0 0 -15"></a-box>
+    <a-sphere position="8.5 2.9 -5"  radius="0.1" material="color:#44ffcc;emissive:#22ffaa;emissiveIntensity:1.2"></a-sphere>
+    <a-entity light="type:point;intensity:0.5;distance:5;color:#22ccaa" position="8 3 -5"></a-entity>
+
+    <!-- ── Chain hanging from ceiling ── -->
+    <a-cylinder position="0 6 -5" radius="0.015" height="3" material="color:#445566"></a-cylinder>
+    <a-torus    position="0 4.5 -5" radius="0.12" tube="0.025" material="color:#445566"></a-torus>
+    <!-- Hanging lantern -->
+    <a-cylinder position="0 4.1 -5" radius="0.18" height="0.5" material="color:#1a2535;opacity:0.7;transparent:true"></a-cylinder>
+    <a-sphere   position="0 4.1 -5" radius="0.12" material="color:#aaffdd;emissive:#44ffbb;emissiveIntensity:0.9"></a-sphere>
+    <a-entity light="type:point;intensity:0.6;distance:6;color:#44ddaa" position="0 4 -5"></a-entity>
+
+    <!-- ── Skull decoration on altar (non-violent: purely decorative) ── -->
+    <a-sphere position="0 1.55 -8.2" radius="0.14" material="color:#ccccbb;roughness:0.8"></a-sphere>
+    <a-sphere position="-0.06 1.48 -8.07" radius="0.06" material="color:#111111"></a-sphere>
+    <a-sphere position="0.06  1.48 -8.07" radius="0.06" material="color:#111111"></a-sphere>
+
+    <!-- L2 sky — deeper cold -->
+    <a-sky color="#050810"></a-sky>
+  </a-entity>
+
+  <!-- ══════════════════════════════════════════════════════
+       3-D SETUP MENU
+       Attached as child of rig so it's always at eye level
+       regardless of where the rig starts.
+       Panel sits 2.2m in front, centred at rig eye height.
+       ══════════════════════════════════════════════════════ -->
   <a-entity id="menuRoot" position="0 1.6 -2.2">
-    <!-- Background -->
-    <a-plane width="1.9" height="2.5" color="#0a0a1a" opacity="0.92" position="0 0 -0.005"></a-plane>
+    <a-plane width="2.0" height="2.7" color="#08040f" opacity="0.94" position="0 0 -0.005"
+      material="color:#08040f;opacity:0.94;transparent:true"></a-plane>
 
-    <a-text value="EYE'S ON — SETUP" align="center" color="#ffffff"
-      width="1.7" position="0 0.96 0"></a-text>
+    <!-- Decorative header bar -->
+    <a-plane width="2.0" height="0.08" color="#9050ff" opacity="0.8" position="0 1.24 0"
+      material="color:#9050ff;emissive:#6020cc;emissiveIntensity:0.5;opacity:0.8;transparent:true"></a-plane>
 
-    <!-- Music -->
-    <a-entity id="btn-music" position="0 0.56 0">
-      <a-plane id="bg-music" width="1.5" height="0.30" color="#1a1a2e" opacity="0.95"
-        class="raycast-target" data-action="music"></a-plane>
-      <a-text id="txt-music" value="Music: OFF" align="center" color="#ffffff" width="1.4" position="0 0 0.012"></a-text>
+    <a-text value="EYE'S ON" align="center" color="#c8a0ff" width="1.9" position="0 1.05 0" font="mozillavr"></a-text>
+    <a-text value="GAME SETUP" align="center" color="#888888" width="1.3" position="0 0.82 0"></a-text>
+
+    <!-- Music toggle -->
+    <a-entity id="btn-music" position="0 0.50 0">
+      <a-plane id="bg-music" width="1.6" height="0.32" color="#1a1030" opacity="0.96"
+        class="raycast-target" data-action="music"
+        material="color:#1a1030;opacity:0.96;transparent:true"></a-plane>
+      <a-text id="txt-music" value="♪  Music: OFF" align="center" color="#ccbbff" width="1.5" position="0 0 0.012"></a-text>
     </a-entity>
 
-    <!-- SFX -->
-    <a-entity id="btn-sfx" position="0 0.18 0">
-      <a-plane id="bg-sfx" width="1.5" height="0.30" color="#1a1a2e" opacity="0.95"
-        class="raycast-target" data-action="sfx"></a-plane>
-      <a-text id="txt-sfx" value="SFX: OFF" align="center" color="#ffffff" width="1.4" position="0 0 0.012"></a-text>
+    <!-- SFX toggle -->
+    <a-entity id="btn-sfx" position="0 0.10 0">
+      <a-plane id="bg-sfx" width="1.6" height="0.32" color="#1a1030" opacity="0.96"
+        class="raycast-target" data-action="sfx"
+        material="color:#1a1030;opacity:0.96;transparent:true"></a-plane>
+      <a-text id="txt-sfx" value="◎  SFX: OFF" align="center" color="#ccbbff" width="1.5" position="0 0 0.012"></a-text>
     </a-entity>
 
-    <!-- Difficulty -->
-    <a-entity id="btn-difficulty" position="0 -0.20 0">
-      <a-plane id="bg-difficulty" width="1.5" height="0.30" color="#1a1a2e" opacity="0.95"
-        class="raycast-target" data-action="difficulty"></a-plane>
-      <a-text id="txt-difficulty" value="Difficulty: EASY" align="center" color="#ffffff" width="1.4" position="0 0 0.012"></a-text>
+    <!-- Difficulty toggle -->
+    <a-entity id="btn-difficulty" position="0 -0.30 0">
+      <a-plane id="bg-difficulty" width="1.6" height="0.32" color="#1a1030" opacity="0.96"
+        class="raycast-target" data-action="difficulty"
+        material="color:#1a1030;opacity:0.96;transparent:true"></a-plane>
+      <a-text id="txt-difficulty" value="☆  Difficulty: EASY" align="center" color="#ccbbff" width="1.5" position="0 0 0.012"></a-text>
     </a-entity>
 
-    <!-- Start -->
-    <a-entity id="btn-start" position="0 -0.65 0">
-      <a-plane id="bg-start" width="1.5" height="0.34" color="#1e2a4a" opacity="0.98"
-        class="raycast-target" data-action="start"></a-plane>
-      <a-text value="▶  Start Game" align="center" color="#ffdd77" width="1.4" position="0 0 0.012"></a-text>
+    <!-- Decorative divider -->
+    <a-plane width="1.6" height="0.02" color="#9050ff" opacity="0.4" position="0 -0.56 0"
+      material="color:#9050ff;opacity:0.4;transparent:true"></a-plane>
+
+    <!-- Start button -->
+    <a-entity id="btn-start" position="0 -0.82 0">
+      <a-plane id="bg-start" width="1.6" height="0.38" color="#280050" opacity="0.98"
+        class="raycast-target" data-action="start"
+        material="color:#280050;emissive:#180030;emissiveIntensity:0.4;opacity:0.98;transparent:true"></a-plane>
+      <a-text value="▶   START GAME" align="center" color="#ffdd44" width="1.5" position="0 0 0.012"></a-text>
     </a-entity>
 
-    <a-text value="Look at a button and hold to select."
-      align="center" color="#888888" width="1.5" position="0 -0.98 0"></a-text>
+    <a-text value="Gaze at a button and hold (1 sec) to select."
+      align="center" color="#555555" width="1.6" position="0 -1.14 0"></a-text>
   </a-entity>
 
-  <!-- ══════════ END PANEL (3D, world-fixed, hidden until game ends) ══════════ -->
+  <!-- ══════════════════════════════════════════════════════
+       3-D END PANEL (game over / win)
+       ══════════════════════════════════════════════════════ -->
   <a-entity id="endRoot" visible="false" position="0 1.6 -2.2">
-    <a-plane width="1.9" height="2.0" color="#0a0a1a" opacity="0.92" position="0 0 -0.005"></a-plane>
+    <a-plane width="2.0" height="2.4" color="#08040f" opacity="0.94" position="0 0 -0.005"
+      material="color:#08040f;opacity:0.94;transparent:true"></a-plane>
+    <a-plane width="2.0" height="0.08" color="#ff4444" opacity="0.8" position="0 1.1 0"
+      id="end-header-bar"
+      material="color:#ff4444;emissive:#cc0000;emissiveIntensity:0.5;opacity:0.8;transparent:true"></a-plane>
 
-    <a-text id="end-title" value="GAME OVER" align="center" color="#ff6666"
-      width="1.7" position="0 0.70 0"></a-text>
-    <a-text id="end-line1" value="" align="center" color="#ffffff" width="1.6" position="0 0.35 0"></a-text>
-    <a-text id="end-line2" value="" align="center" color="#aaaaaa" width="1.6" position="0 0.10 0"></a-text>
-    <a-text id="end-line3" value="" align="center" color="#aaaaaa" width="1.6" position="0 -0.12 0"></a-text>
+    <a-text id="end-title"  value="GAME OVER" align="center" color="#ff6666" width="1.8" position="0 0.78 0" font="mozillavr"></a-text>
+    <a-text id="end-line1"  value="" align="center" color="#ffffff" width="1.7" position="0 0.44 0"></a-text>
+    <a-text id="end-line2"  value="" align="center" color="#aaaaaa" width="1.7" position="0 0.18 0"></a-text>
+    <a-text id="end-line3"  value="" align="center" color="#aaaaaa" width="1.7" position="0 -0.06 0"></a-text>
+    <a-text id="end-line4"  value="" align="center" color="#88aaff" width="1.7" position="0 -0.30 0"></a-text>
 
-    <!-- Play Again button -->
-    <a-entity id="btn-restart" position="0 -0.52 0">
-      <a-plane id="bg-restart" width="1.5" height="0.34" color="#1e2a4a" opacity="0.98"
-        class="raycast-target" data-action="restart"></a-plane>
-      <a-text value="↺  Play Again" align="center" color="#ffdd77" width="1.4" position="0 0 0.012"></a-text>
+    <!-- Play Again -->
+    <a-entity id="btn-restart" position="0 -0.68 0">
+      <a-plane id="bg-restart" width="1.6" height="0.38" color="#280050" opacity="0.98"
+        class="raycast-target" data-action="restart"
+        material="color:#280050;emissive:#180030;emissiveIntensity:0.4;opacity:0.98;transparent:true"></a-plane>
+      <a-text value="↺   PLAY AGAIN" align="center" color="#ffdd44" width="1.5" position="0 0 0.012"></a-text>
     </a-entity>
 
-    <a-text value="Look at Play Again and hold to select."
-      align="center" color="#888888" width="1.5" position="0 -0.85 0"></a-text>
+    <a-text value="Gaze at Play Again and hold to restart."
+      align="center" color="#555555" width="1.6" position="0 -1.05 0"></a-text>
   </a-entity>
 
-  <!-- ══════════ STATUE ══════════ -->
-  <a-entity id="statueRoot" visible="false" position="0 0 -3">
-    <a-cylinder position="0 0.4 0" radius="0.55" height="0.8" color="#7a7a7a"></a-cylinder>
-    <a-entity id="statueBody" position="0 1.35 0">
-      <!--
-        The statue pieces all carry class="raycast-target" AND data-action="statue"
-        so the single raycaster can detect gaze on the statue during gameplay.
-      -->
-      <a-cylinder class="raycast-target" data-action="statue"
-        radius="0.22" height="0.8" color="#c0c0c0"></a-cylinder>
-      <a-sphere class="raycast-target" data-action="statue"
-        position="0 0.56 0" radius="0.23" color="#d6d6d6"></a-sphere>
-      <a-box class="raycast-target" data-action="statue"
-        position="0 0.18 0.18" width="0.12" height="0.12" depth="0.12" color="#1b1b1b"></a-box>
+  <!-- ══════════════════════════════════════════════════════
+       STATUE — custom textured object (rubric)
+       Pedestal + torso + head + glowing eye ornament
+       All statue pieces have class="raycast-target" data-action="statue"
+       ══════════════════════════════════════════════════════ -->
+  <a-entity id="statueRoot" visible="false" position="0 0 -4">
+
+    <!-- Pedestal: carved stone look -->
+    <a-cylinder position="0 0.5 0" radius="0.6" height="1.0"
+      material="color:#8a8a7a;roughness:0.95;metalness:0.05"
+      class="raycast-target" data-action="statue">
+    </a-cylinder>
+    <!-- Pedestal top trim -->
+    <a-cylinder position="0 1.02 0" radius="0.65" height="0.08"
+      material="color:#6a6a5a;roughness:0.9"
+      class="raycast-target" data-action="statue">
+    </a-cylinder>
+
+    <!-- Torso -->
+    <a-cylinder position="0 1.7 0" radius="0.22" height="0.9"
+      material="color:#c8c8b8;roughness:0.7;metalness:0.15"
+      class="raycast-target" data-action="statue">
+    </a-cylinder>
+    <!-- Robe folds (decorative bands) -->
+    <a-torus position="0 1.45 0" radius="0.22" tube="0.04" rotation="90 0 0"
+      material="color:#a8a898;roughness:0.8"
+      class="raycast-target" data-action="statue">
+    </a-torus>
+    <a-torus position="0 1.85 0" radius="0.22" tube="0.04" rotation="90 0 0"
+      material="color:#a8a898;roughness:0.8"
+      class="raycast-target" data-action="statue">
+    </a-torus>
+
+    <!-- Head -->
+    <a-sphere position="0 2.32 0" radius="0.24"
+      material="color:#d8d8c8;roughness:0.6;metalness:0.1"
+      class="raycast-target" data-action="statue">
+    </a-sphere>
+    <!-- Eyes — glowing amber orbs -->
+    <a-sphere position="-0.09 2.36 0.21" radius="0.045"
+      material="color:#ffcc44;emissive:#ffaa00;emissiveIntensity:1.2"
+      class="raycast-target" data-action="statue">
+    </a-sphere>
+    <a-sphere position="0.09 2.36 0.21"  radius="0.045"
+      material="color:#ffcc44;emissive:#ffaa00;emissiveIntensity:1.2"
+      class="raycast-target" data-action="statue">
+    </a-sphere>
+    <!-- Statue glow light -->
+    <a-entity id="statueLight"
+      light="type:point;intensity:0.6;distance:3;color:#ffcc44"
+      position="0 2.3 0">
     </a-entity>
+
   </a-entity>
 
-  <a-sky color="#1a1026"></a-sky>
+  <!-- ══════════════════════════════════════════════════════
+       BONUS ORBS (spawned/despawned by JS)
+       3 orbs pre-created, JS positions + shows/hides them
+       ══════════════════════════════════════════════════════ -->
+  <a-entity id="bonus0" visible="false" position="0 0 0">
+    <a-sphere radius="0.18"
+      material="color:#44ffcc;emissive:#22ddaa;emissiveIntensity:1;opacity:0.85;transparent:true"
+      class="raycast-target" data-action="bonus" data-bonusid="0">
+    </a-sphere>
+    <a-entity light="type:point;intensity:0.5;distance:2.5;color:#44ffcc"></a-entity>
+    <a-text value="?" align="center" color="#ffffff" width="0.5" position="0 0.28 0"></a-text>
+  </a-entity>
+
+  <a-entity id="bonus1" visible="false" position="0 0 0">
+    <a-sphere radius="0.18"
+      material="color:#ff88ff;emissive:#cc44cc;emissiveIntensity:1;opacity:0.85;transparent:true"
+      class="raycast-target" data-action="bonus" data-bonusid="1">
+    </a-sphere>
+    <a-entity light="type:point;intensity:0.5;distance:2.5;color:#ff88ff"></a-entity>
+    <a-text value="?" align="center" color="#ffffff" width="0.5" position="0 0.28 0"></a-text>
+  </a-entity>
+
+  <a-entity id="bonus2" visible="false" position="0 0 0">
+    <a-sphere radius="0.18"
+      material="color:#ffee44;emissive:#ccaa00;emissiveIntensity:1;opacity:0.85;transparent:true"
+      class="raycast-target" data-action="bonus" data-bonusid="2">
+    </a-sphere>
+    <a-entity light="type:point;intensity:0.5;distance:2.5;color:#ffee44"></a-entity>
+    <a-text value="?" align="center" color="#ffffff" width="0.5" position="0 0.28 0"></a-text>
+  </a-entity>
+
 </a-scene>
 
 <script>
-// ─── State ───────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// AUDIO ENGINE — Web Audio API, no external files
+// ═══════════════════════════════════════════════════════════════════════════
+let audioCtx = null;
+let musicOscillators = [];
+let musicGain = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+// Simple ambient drone music — two detuned oscillators + slow LFO
+function startMusic() {
+  if (!state.musicOn) return;
+  stopMusic();
+  const ctx = getAudioCtx();
+  musicGain = ctx.createGain();
+  musicGain.gain.setValueAtTime(0.08, ctx.currentTime);
+  musicGain.connect(ctx.destination);
+
+  const freqs = state.level === 1
+    ? [110, 164.8, 220]      // A2, E3, A3 — haunting minor
+    : [87.3, 116.5, 174.6];  // F2, A#2, F3 — darker crypt tones
+
+  freqs.forEach((f, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = i === 0 ? 'sawtooth' : 'sine';
+    osc.frequency.setValueAtTime(f + (i * 0.3), ctx.currentTime); // slight detune
+    // LFO tremolo
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.frequency.setValueAtTime(0.2 + i * 0.07, ctx.currentTime);
+    lfoGain.gain.setValueAtTime(0.015, ctx.currentTime);
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    lfo.start();
+    osc.connect(musicGain);
+    osc.start();
+    musicOscillators.push(osc, lfo);
+  });
+}
+
+function stopMusic() {
+  musicOscillators.forEach(o => { try { o.stop(); } catch(e){} });
+  musicOscillators = [];
+  if (musicGain) { musicGain.disconnect(); musicGain = null; }
+}
+
+// One-shot SFX tones
+function playSfx(type) {
+  if (!state.sfxOn) return;
+  const ctx = getAudioCtx();
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  if (type === 'lock') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+    osc.start(); osc.stop(ctx.currentTime + 0.2);
+  } else if (type === 'unlock') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc.start(); osc.stop(ctx.currentTime + 0.25);
+  } else if (type === 'bonus') {
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(660, ctx.currentTime);
+    osc.frequency.setValueAtTime(990, ctx.currentTime + 0.08);
+    osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.16);
+    gain.gain.setValueAtTime(0.22, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc.start(); osc.stop(ctx.currentTime + 0.35);
+  } else if (type === 'danger') {
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(200, ctx.currentTime);
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.start(); osc.stop(ctx.currentTime + 0.3);
+  } else if (type === 'select') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+    osc.start(); osc.stop(ctx.currentTime + 0.18);
+  } else if (type === 'levelup') {
+    // arpeggio: C E G C5
+    [261, 330, 392, 523].forEach((f, i) => {
+      const o2 = ctx.createOscillator();
+      const g2 = ctx.createGain();
+      o2.connect(g2); g2.connect(ctx.destination);
+      o2.type = 'triangle';
+      const t = ctx.currentTime + i * 0.12;
+      o2.frequency.setValueAtTime(f, t);
+      g2.gain.setValueAtTime(0.2, t);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      o2.start(t); o2.stop(t + 0.2);
+    });
+    return;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════════════════════
 const state = {
-  phase: 'menu',   // 'menu' | 'playing' | 'end'
+  phase: 'menu',
   musicOn: false, sfxOn: false, difficulty: 'easy',
-  level: 1, score: 0, timer: 0, danger: 0, lastSeen: false,
-  levelDuration: 35,
-  gameLoop: null, statueLoop: null,
-  statueGazed: false,   // true this tick if raycaster hits statue
+  level: 1, score: 0, timer: 0, danger: 0,
+  lastSeen: false, statueGazed: false,
+  bonusGazed: false, bonusId: -1,
+  bonusCollected: 0,
+  levelDuration: 40,
+  gameLoop: null, statueLoop: null, bonusLoop: null,
+  dangerSfxTimer: 0,
+
+  // ── Spawn-safe statue positions ──
+  // Cleared positions that don't overlap with props in either level.
+  // Each level has its own set.
+  statuePositions: {
+    1: [
+      // Centre area
+      {x:0,   z:-4}, {x:0,   z:-6},
+      // Left open areas (avoiding desk at -4,-4 and bookshelf at -7.5,-5)
+      {x:-2,  z:-5}, {x:-2,  z:-7},
+      // Right open areas (avoiding armchair at 4,-3.5 and bookshelf 7.5,-5)
+      {x:2,   z:-5}, {x:2,   z:-7},
+      {x:-3,  z:-7.5},{x:3,  z:-7.5},
+    ],
+    2: [
+      // Centre, avoiding pillars at (±5, -3) and (±5, -7), sarcophagi at (±6.5, -6), altar at (0,-8.2)
+      {x:0,   z:-4}, {x:0,   z:-6},
+      {x:-2,  z:-5}, {x:2,   z:-5},
+      {x:-2,  z:-7}, {x:2,   z:-7},
+      {x:-3,  z:-5}, {x:3,   z:-5},
+    ]
+  },
+
+  // ── Bonus orb spawn positions (level-appropriate, away from statue safe spots) ──
+  bonusPositions: {
+    1: [
+      {x:-5, y:2, z:-4},{x:5, y:2, z:-4},
+      {x:0,  y:2.5, z:-7.5},{x:-5, y:1.8, z:-6},
+      {x:5,  y:1.8, z:-6},{x:3, y:2.2, z:-3},
+    ],
+    2: [
+      {x:-3, y:2.2, z:-3},{x:3,  y:2.2, z:-3},
+      {x:-7, y:2,   z:-5},{x:7,  y:2,   z:-5},
+      {x:0,  y:3,   z:-6},{x:-4, y:2.5, z:-7},
+    ]
+  },
+
   levelConfigs: {
     1: {
-      name: 'Level 1 — Haunted Study',
-      statueInterval: 2600, dangerRate: 1.4, decayRate: 2.6, lightIntensity: 1.15,
-      positions: [
-        {x:0,z:-3},{x:-2.8,z:-5.2},{x:2.7,z:-5.5},
-        {x:-4.8,z:-3.8},{x:4.8,z:-3.8},{x:0,z:-6.2}
-      ]
+      name: 'The Haunted Study',
+      statueInterval: 2800,
+      dangerRate: 1.2, decayRate: 2.8,
+      bonusInterval: 8000, bonusValue: 150, bonusDwell: 1.5,
+      fogColor: '#1a0f10', fogNear: 10, fogFar: 22,
+      ambientColor: '#ffe8cc', ambientIntensity: 0.5,
+      mainLightColor: '#ffcc88', mainLightIntensity: 1.4,
+      skyColor: '#120a1a',
     },
     2: {
-      name: 'Level 2 — Basement Shrine',
-      statueInterval: 1500, dangerRate: 2.6, decayRate: 1.8, lightIntensity: 0.72,
-      positions: [
-        {x:0,z:-6.5},{x:-5.5,z:-4.4},{x:5.5,z:-4.4},
-        {x:-3.6,z:-2.6},{x:3.6,z:-2.6},{x:0,z:-3.1}
-      ]
+      name: 'The Stone Crypt',
+      statueInterval: 1600,
+      dangerRate: 2.4, decayRate: 1.8,
+      bonusInterval: 5500, bonusValue: 200, bonusDwell: 1.2,
+      fogColor: '#050810', fogNear: 6, fogFar: 18,
+      ambientColor: '#8899cc', ambientIntensity: 0.3,
+      mainLightColor: '#4466aa', mainLightIntensity: 0.7,
+      skyColor: '#050810',
     }
   }
 };
 
-// ─── DOM / AFrame refs ───────────────────────────────────────────────────────
-const scene        = document.querySelector('a-scene');
+// ─── DOM refs ────────────────────────────────────────────────────────────────
+const scene        = document.getElementById('mainScene');
 const cursor3d     = document.getElementById('cursor3d');
 const menuRoot     = document.getElementById('menuRoot');
 const endRoot      = document.getElementById('endRoot');
 const statueRoot   = document.getElementById('statueRoot');
+const sceneL1      = document.getElementById('sceneL1');
+const sceneL2      = document.getElementById('sceneL2');
 const mainLight    = document.getElementById('mainLight');
+const ambientLight = document.getElementById('ambientLight');
+const statueLight  = document.getElementById('statueLight');
+const endHeaderBar = document.getElementById('end-header-bar');
+const bonusEnts    = [0,1,2].map(i => document.getElementById('bonus'+i));
 
-const txtMusic     = document.getElementById('txt-music');
-const txtSfx       = document.getElementById('txt-sfx');
-const txtDifficulty= document.getElementById('txt-difficulty');
-const bgMusic      = document.getElementById('bg-music');
-const bgSfx        = document.getElementById('bg-sfx');
-const bgDifficulty = document.getElementById('bg-difficulty');
-const bgStart      = document.getElementById('bg-start');
-const bgRestart    = document.getElementById('bg-restart');
+const txtMusic      = document.getElementById('txt-music');
+const txtSfx        = document.getElementById('txt-sfx');
+const txtDifficulty = document.getElementById('txt-difficulty');
+const bgMusic       = document.getElementById('bg-music');
+const bgSfx         = document.getElementById('bg-sfx');
+const bgDifficulty  = document.getElementById('bg-difficulty');
+const bgStart       = document.getElementById('bg-start');
+const bgRestart     = document.getElementById('bg-restart');
+const endTitle      = document.getElementById('end-title');
+const endLine1      = document.getElementById('end-line1');
+const endLine2      = document.getElementById('end-line2');
+const endLine3      = document.getElementById('end-line3');
+const endLine4      = document.getElementById('end-line4');
 
-const endTitle     = document.getElementById('end-title');
-const endLine1     = document.getElementById('end-line1');
-const endLine2     = document.getElementById('end-line2');
-const endLine3     = document.getElementById('end-line3');
-
-const splash       = document.getElementById('splash');
-const hud          = document.getElementById('hud');
-const message      = document.getElementById('message');
-const hudLevel     = document.getElementById('hud-level');
-const hudScore     = document.getElementById('hud-score');
-const hudTime      = document.getElementById('hud-time');
-const hudDanger    = document.getElementById('hud-danger');
-const hudLocked    = document.getElementById('hud-locked');
-const reticleUI    = document.getElementById('reticle-ui');
-const reticleFill  = document.getElementById('reticle-fill');
-const gazeBar      = document.getElementById('gaze-bar');
-const dangerFill   = document.getElementById('dangerBarFill');
+const splash        = document.getElementById('splash');
+const hud           = document.getElementById('hud');
+const message       = document.getElementById('message');
+const hudScore      = document.getElementById('hud-score');
+const hudLevel      = document.getElementById('hud-level');
+const hudTime       = document.getElementById('hud-time');
+const hudDanger     = document.getElementById('hud-danger');
+const hudLocked     = document.getElementById('hud-locked');
+const hudBonus      = document.getElementById('hud-bonus');
+const reticleUI     = document.getElementById('reticle-ui');
+const reticleFill   = document.getElementById('reticle-fill');
+const gazeBar       = document.getElementById('gaze-bar');
+const dangerFill    = document.getElementById('dangerBarFill');
+const bonusFlash    = document.getElementById('bonusFlash');
 
 // ─── UI helpers ──────────────────────────────────────────────────────────────
 const setMsg = t => { message.textContent = t; };
 
 function setReticleLocked(on) {
-  reticleUI.style.borderColor  = on ? 'rgba(120,255,160,1)' : 'rgba(255,255,255,0.95)';
-  reticleUI.style.boxShadow    = on ? '0 0 14px rgba(120,255,160,0.85)' : 'none';
-  reticleFill.style.background = on ? 'rgba(120,255,160,1)' : 'rgba(255,255,255,0.95)';
+  reticleUI.style.borderColor  = on ? 'rgba(120,255,160,1)' : 'rgba(255,255,255,0.9)';
+  reticleUI.style.boxShadow    = on ? '0 0 14px rgba(100,255,140,0.9)' : 'none';
+  reticleFill.style.background = on ? 'rgba(120,255,160,1)' : 'rgba(255,255,255,0.9)';
 }
 
 function setGazeProgress(p) {
   gazeBar.style.width = Math.max(0, Math.min(100, p * 100)) + '%';
 }
 
+const BASE_COLORS = {
+  'bg-music':'#1a1030','bg-sfx':'#1a1030',
+  'bg-difficulty':'#1a1030','bg-start':'#280050','bg-restart':'#280050'
+};
 function setBg(el, highlight) {
   if (!el) return;
-  el.setAttribute('color', highlight ? '#3a3a1a' : (el.id === 'bg-start' || el.id === 'bg-restart' ? '#1e2a4a' : '#1a1a2e'));
+  el.setAttribute('color', highlight ? '#3a2060' : (BASE_COLORS[el.id] || '#1a1030'));
 }
 
 function updateHUD(locked) {
-  hudLevel.textContent  = state.level;
   hudScore.textContent  = Math.floor(state.score);
+  hudLevel.textContent  = state.level;
   hudTime.textContent   = Math.floor(state.timer);
   hudDanger.textContent = Math.floor(Math.max(0, Math.min(100, state.danger)));
-  hudLocked.textContent = locked ? 'YES' : 'NO';
+  hudLocked.textContent = locked ? 'YES ✓' : 'NO';
+  hudBonus.textContent  = state.bonusCollected;
   dangerFill.style.width = Math.max(0, Math.min(100, state.danger)) + '%';
 }
 
 function updateMenuText() {
-  txtMusic.setAttribute('value',       `Music: ${state.musicOn ? 'ON' : 'OFF'}`);
-  txtSfx.setAttribute('value',         `SFX: ${state.sfxOn ? 'ON' : 'OFF'}`);
-  txtDifficulty.setAttribute('value',  `Difficulty: ${state.difficulty.toUpperCase()}`);
+  txtMusic.setAttribute('value',      `♪  Music: ${state.musicOn ? 'ON' : 'OFF'}`);
+  txtSfx.setAttribute('value',        `◎  SFX: ${state.sfxOn ? 'ON' : 'OFF'}`);
+  txtDifficulty.setAttribute('value', `☆  Difficulty: ${state.difficulty.toUpperCase()}`);
+}
+
+function showBonusFlash(pts) {
+  bonusFlash.textContent = `+${pts} BONUS!`;
+  bonusFlash.style.opacity = '1';
+  setTimeout(() => { bonusFlash.style.opacity = '0'; }, 900);
 }
 
 function clearLoops() {
   clearInterval(state.gameLoop);
   clearInterval(state.statueLoop);
-  state.gameLoop = state.statueLoop = null;
+  clearInterval(state.bonusLoop);
+  state.gameLoop = state.statueLoop = state.bonusLoop = null;
 }
 
-// ─── Statue position ──────────────────────────────────────────────────────────
+// ─── Scene switching ─────────────────────────────────────────────────────────
+function applyLevelTheme(level) {
+  const cfg = state.levelConfigs[level];
+  sceneL1.setAttribute('visible', level === 1);
+  sceneL2.setAttribute('visible', level === 2);
+  scene.setAttribute('fog', `type:linear;color:${cfg.fogColor};near:${cfg.fogNear};far:${cfg.fogFar}`);
+  ambientLight.setAttribute('light', `type:ambient;color:${cfg.ambientColor};intensity:${cfg.ambientIntensity}`);
+  mainLight.setAttribute('light', `type:point;color:${cfg.mainLightColor};intensity:${cfg.mainLightIntensity};distance:22`);
+  scene.setAttribute('background', `color:${cfg.skyColor}`);
+}
+
+// ─── Statue position ─────────────────────────────────────────────────────────
 function chooseStatuePosition() {
-  const cfg  = state.levelConfigs[state.level];
-  const pick = cfg.positions[Math.floor(Math.random() * cfg.positions.length)];
+  const positions = state.statuePositions[state.level];
+  const pick = positions[Math.floor(Math.random() * positions.length)];
   statueRoot.setAttribute('position', `${pick.x} 0 ${pick.z}`);
+  // Pulse the statue light briefly to indicate teleport
+  statueLight.setAttribute('light', 'type:point;intensity:1.4;distance:4;color:#ffcc44');
+  setTimeout(() => {
+    statueLight.setAttribute('light', 'type:point;intensity:0.6;distance:3;color:#ffcc44');
+  }, 300);
 }
 
-// ─── Show end panel (3D) ──────────────────────────────────────────────────────
-function showEnd(title, color, l1, l2, l3) {
+// ─── Bonus orb management ────────────────────────────────────────────────────
+let activeBonusId = -1;
+let bonusGazeProgress = 0;
+
+function hideAllBonusOrbs() {
+  bonusEnts.forEach(b => b.setAttribute('visible', false));
+  activeBonusId = -1;
+  bonusGazeProgress = 0;
+}
+
+function spawnBonusOrb() {
+  if (state.phase !== 'playing') return;
+  hideAllBonusOrbs();
+  const positions = state.bonusPositions[state.level];
+  const pos = positions[Math.floor(Math.random() * positions.length)];
+  const id  = Math.floor(Math.random() * 3);
+  bonusEnts[id].setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+  bonusEnts[id].setAttribute('visible', true);
+  activeBonusId = id;
+  // Auto-despawn after 5 seconds if not collected
+  setTimeout(() => {
+    if (activeBonusId === id) hideAllBonusOrbs();
+  }, 5000);
+}
+
+// ─── End panel ───────────────────────────────────────────────────────────────
+function showEnd(title, color, l1, l2, l3, l4) {
   clearLoops();
+  stopMusic();
   state.phase = 'end';
+  hideAllBonusOrbs();
   statueRoot.setAttribute('visible', false);
   hud.classList.add('hidden');
   message.textContent = '';
@@ -313,28 +880,33 @@ function showEnd(title, color, l1, l2, l3) {
   setGazeProgress(0);
   endTitle.setAttribute('value', title);
   endTitle.setAttribute('color', color);
+  endHeaderBar.setAttribute('color', color === '#88ff88' ? '#44cc44' : '#cc2222');
   endLine1.setAttribute('value', l1);
   endLine2.setAttribute('value', l2);
   endLine3.setAttribute('value', l3);
+  endLine4.setAttribute('value', l4);
   endRoot.setAttribute('visible', true);
 }
 
-// ─── Return to menu ───────────────────────────────────────────────────────────
+// ─── Return to menu ──────────────────────────────────────────────────────────
 function returnToMenu() {
   clearLoops();
+  stopMusic();
   state.phase = 'menu';
+  hideAllBonusOrbs();
   endRoot.setAttribute('visible', false);
   hud.classList.add('hidden');
   statueRoot.setAttribute('visible', false);
   menuRoot.setAttribute('visible', true);
+  applyLevelTheme(1);
   setReticleLocked(false);
   setGazeProgress(0);
   dangerFill.style.width = '0%';
   updateMenuText();
-  setMsg('Look at a button and hold your gaze to select it.');
+  setMsg('Gaze at a button and hold (1 sec) to select.');
 }
 
-// ─── Start a level ────────────────────────────────────────────────────────────
+// ─── Start level ─────────────────────────────────────────────────────────────
 function startLevel(level) {
   clearLoops();
   state.phase     = 'playing';
@@ -344,103 +916,142 @@ function startLevel(level) {
   state.danger    = 0;
   state.lastSeen  = false;
   state.statueGazed = false;
+  state.bonusCollected = level === 1 ? 0 : state.bonusCollected;
+  state.dangerSfxTimer = 0;
+  hideAllBonusOrbs();
 
-  const cfg        = state.levelConfigs[level];
-  const diffMult   = state.difficulty === 'hard' ? 1.35 : 1;
-  const dangerRate = cfg.dangerRate * diffMult;
-  const decayRate  = cfg.decayRate;
-  const interval   = cfg.statueInterval / diffMult;
+  const cfg      = state.levelConfigs[level];
+  const diffMult = state.difficulty === 'hard' ? 1.4 : 1;
+  const dangerRate  = cfg.dangerRate  * diffMult;
+  const decayRate   = cfg.decayRate;
+  const stInterval  = cfg.statueInterval / diffMult;
 
+  applyLevelTheme(level);
   menuRoot.setAttribute('visible', false);
   endRoot.setAttribute('visible', false);
   hud.classList.remove('hidden');
   statueRoot.setAttribute('visible', true);
-  mainLight.setAttribute('light', `type: point; intensity: ${cfg.lightIntensity}; distance: 25`);
   chooseStatuePosition();
   setMsg(`${cfg.name} — Keep the statue in your crosshair!`);
   setReticleLocked(false);
   setGazeProgress(0);
   dangerFill.style.width = '0%';
   updateHUD(false);
+  startMusic();
 
-  state.statueLoop = setInterval(chooseStatuePosition, interval);
+  state.statueLoop = setInterval(chooseStatuePosition, stInterval);
 
-  // Game tick — reads state.statueGazed which is set by the raycaster poll below
+  // Bonus orb spawn timer
+  state.bonusLoop = setInterval(spawnBonusOrb, cfg.bonusInterval / diffMult);
+
+  // ── Main game tick (100ms) ────────────────────────────────────────────────
   state.gameLoop = setInterval(() => {
     const locked = state.statueGazed;
+
+    if (locked !== state.lastSeen) {
+      if (locked) playSfx('lock');
+      else        playSfx('unlock');
+    }
+
     setReticleLocked(locked);
     state.timer += 0.1;
-    state.score += 3;
+    state.score += locked ? 5 : 2;  // more points for staying locked
 
     if (locked) {
-      if (!state.lastSeen) {
-        state.score += 25;
-        setMsg('Locked on! Danger dropping…');
-      }
+      if (!state.lastSeen) state.score += 30;
       state.danger = Math.max(0, state.danger - decayRate);
+      if (state.danger < 70 && state.lastSeen) setMsg(`${cfg.name} — Good! Keep it up.`);
     } else {
       state.danger = Math.min(100, state.danger + dangerRate);
-      if (state.danger > 70) setMsg('⚠️ DANGER! Look at the statue!');
-      else if (!state.lastSeen) setMsg(`${cfg.name} — Keep the statue in your crosshair!`);
+      state.dangerSfxTimer += 0.1;
+      if (state.danger > 70) {
+        setMsg('⚠️ DANGER HIGH — Look at the statue!');
+        if (state.dangerSfxTimer >= 2.0) { playSfx('danger'); state.dangerSfxTimer = 0; }
+      } else {
+        setMsg(`${cfg.name} — Keep the statue in your crosshair!`);
+      }
     }
 
     state.lastSeen = locked;
     updateHUD(locked);
 
+    // ── Bonus orb gaze (handled in gaze controller, but we tick the dwell here)
+    if (state.bonusGazed && activeBonusId >= 0) {
+      bonusGazeProgress += 0.1 / cfg.bonusDwell;
+      setGazeProgress(bonusGazeProgress);
+      if (bonusGazeProgress >= 1) {
+        // Collected!
+        const pts = cfg.bonusValue + (state.difficulty === 'hard' ? 50 : 0);
+        state.score += pts;
+        state.bonusCollected++;
+        bonusGazeProgress = 0;
+        setGazeProgress(0);
+        hideAllBonusOrbs();
+        playSfx('bonus');
+        showBonusFlash(pts);
+      }
+    } else {
+      bonusGazeProgress = Math.max(0, bonusGazeProgress - 0.08);
+      if (!state.bonusGazed) setGazeProgress(locked ? 0 : bonusGazeProgress);
+    }
+
     if (state.danger >= 100) {
-      showEnd('GAME OVER', '#ff6666',
-        'You lost sight of the statue.',
+      showEnd('GAME OVER', '#ff4444',
+        'The statue disappeared…',
         `Score: ${Math.floor(state.score)}`,
+        `Bonuses: ${state.bonusCollected}`,
         `Level reached: ${state.level}`);
       return;
     }
 
     if (state.timer >= state.levelDuration) {
       clearLoops();
-      if (level === 1 && state.levelConfigs[2]) {
-        setMsg('Level 1 Complete! Get ready…');
-        setTimeout(() => startLevel(2), 2000);
+      if (level === 1) {
+        playSfx('levelup');
+        stopMusic();
+        setMsg('★ Level 1 Complete! Entering the Crypt…');
+        hud.classList.add('hidden');
+        statueRoot.setAttribute('visible', false);
+        hideAllBonusOrbs();
+        setTimeout(() => startLevel(2), 2500);
       } else {
+        playSfx('levelup');
         showEnd('YOU WIN!', '#88ff88',
-          'You survived all levels!',
           `Final Score: ${Math.floor(state.score)}`,
-          `Difficulty: ${state.difficulty.toUpperCase()}`);
+          `Bonuses Collected: ${state.bonusCollected}`,
+          `Difficulty: ${state.difficulty.toUpperCase()}`,
+          'You outsmarted The Watcher!');
       }
     }
   }, 100);
 }
 
-// ─── MASTER GAZE CONTROLLER ──────────────────────────────────────────────────
-// One interval reads the raycaster intersections and routes behaviour
-// based on state.phase: 'menu', 'playing', or 'end'.
-//
-// KEY FIX: during 'playing', we simply check whether the first intersection
-// has data-action="statue". No dot-product math needed — A-Frame's raycaster
-// already handles the geometry test correctly.
-
+// ═══════════════════════════════════════════════════════════════════════════
+// MASTER GAZE CONTROLLER
+// Reads raycaster every 50ms; routes by state.phase.
+// ═══════════════════════════════════════════════════════════════════════════
 function setupGazeController() {
-  // Button background elements keyed by data-action value
   const bgMap = {
     music: bgMusic, sfx: bgSfx,
     difficulty: bgDifficulty, start: bgStart, restart: bgRestart
   };
 
   const menuActions = {
-    music:      () => { state.musicOn = !state.musicOn; updateMenuText(); },
-    sfx:        () => { state.sfxOn   = !state.sfxOn;   updateMenuText(); },
-    difficulty: () => { state.difficulty = state.difficulty === 'easy' ? 'hard' : 'easy'; updateMenuText(); },
-    start:      () => startLevel(1),
-    restart:    () => returnToMenu()
+    music:      () => { state.musicOn = !state.musicOn; updateMenuText(); playSfx('select'); if(state.musicOn) startMusic(); else stopMusic(); },
+    sfx:        () => { state.sfxOn   = !state.sfxOn;   updateMenuText(); playSfx('select'); },
+    difficulty: () => { state.difficulty = state.difficulty === 'easy' ? 'hard' : 'easy'; updateMenuText(); playSfx('select'); },
+    start:      () => { playSfx('select'); startLevel(1); },
+    restart:    () => { playSfx('select'); returnToMenu(); }
   };
 
-  let lastAction   = null;   // which button/target is currently gazed at
-  let gazeProgress = 0;
+  let lastAction   = null;
+  let menuProgress = 0;
 
   setInterval(() => {
-    const rc = cursor3d.components && cursor3d.components.raycaster;
-    const hits = rc ? rc.intersections : [];
+    const rc   = cursor3d.components && cursor3d.components.raycaster;
+    const hits  = rc ? rc.intersections : [];
 
-    // Find the first hit that has a data-action on itself or an ancestor
+    // Find first meaningful hit
     let action = null;
     if (hits.length > 0) {
       let el = hits[0].object.el;
@@ -448,42 +1059,36 @@ function setupGazeController() {
       if (el) action = el.dataset.action;
     }
 
-    // ── During gameplay: statue gaze detection ────────────────────────────────
+    // ── PLAYING phase ────────────────────────────────────────────────────────
     if (state.phase === 'playing') {
       state.statueGazed = (action === 'statue');
-      // Don't run button logic during play
-      lastAction   = null;
-      gazeProgress = 0;
-      setGazeProgress(0);
+      state.bonusGazed  = (action === 'bonus');
+      // Menu progress resets
+      lastAction = null; menuProgress = 0;
+      // Don't reset gaze bar here — bonus dwell uses it
       return;
     }
 
-    // ── Menu / end screen: button gaze dwell ─────────────────────────────────
-    // Only process menu actions in 'menu' phase, restart in 'end' phase
-    const validActions = state.phase === 'menu'
+    // Reset gameplay gaze flags
+    state.statueGazed = false;
+    state.bonusGazed  = false;
+
+    // ── MENU / END phase ─────────────────────────────────────────────────────
+    const valid = state.phase === 'menu'
       ? ['music','sfx','difficulty','start']
       : ['restart'];
 
-    const hit = action && validActions.includes(action) ? action : null;
+    const hit = action && valid.includes(action) ? action : null;
 
-    // Un-highlight previous button if we moved off it
-    if (lastAction && lastAction !== hit) {
-      setBg(bgMap[lastAction], false);
-    }
+    if (lastAction && lastAction !== hit) setBg(bgMap[lastAction], false);
 
     if (hit) {
       setBg(bgMap[hit], true);
-
-      if (lastAction !== hit) {
-        // Moved to a new button — reset dwell
-        gazeProgress = 0;
-      }
-
-      gazeProgress += 0.05;  // ~1 second dwell at 50ms ticks
-      setGazeProgress(gazeProgress);
-
-      if (gazeProgress >= 1) {
-        gazeProgress = 0;
+      if (lastAction !== hit) menuProgress = 0;
+      menuProgress += 0.05;
+      setGazeProgress(menuProgress);
+      if (menuProgress >= 1) {
+        menuProgress = 0;
         setGazeProgress(0);
         setBg(bgMap[hit], false);
         lastAction = null;
@@ -491,7 +1096,7 @@ function setupGazeController() {
         return;
       }
     } else {
-      gazeProgress = 0;
+      menuProgress = 0;
       setGazeProgress(0);
     }
 
@@ -503,8 +1108,9 @@ function setupGazeController() {
 scene.addEventListener('loaded', () => {
   updateMenuText();
   setupGazeController();
-  setMsg('Look at a button and hold your gaze to select it.');
-  setTimeout(() => splash.classList.add('hidden'), 2200);
+  setMsg('Gaze at a button and hold (1 sec) to select.');
+  applyLevelTheme(1);
+  setTimeout(() => splash.classList.add('hidden'), 3000);
 });
 </script>
 </body>
