@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Eye's On - Mobile VR v4</title>
+  <title>Eye's On - Mobile VR v6</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
     html, body {
@@ -44,9 +44,9 @@
       width: min(92vw, 540px);
     }
     #startMenu {
-      top: 22%;
+      top: 20%;
       width: min(92vw, 420px);
-      pointer-events: auto;
+      pointer-events: none;
     }
     #hud {
       top: 1rem;
@@ -61,16 +61,18 @@
       font-size: 15px;
     }
     .hidden { display: none; }
-    button {
+    .gaze-menu-btn {
+      margin: 10px auto;
       width: 220px;
-      max-width: 90%;
       padding: 10px 14px;
       border-radius: 10px;
       border: 1px solid rgba(255,255,255,0.25);
       background: rgba(255,255,255,0.12);
       color: white;
       font-size: 16px;
-      cursor: pointer;
+      text-align: center;
+      user-select: none;
+      box-sizing: border-box;
     }
     #reticle-ui {
       position: absolute;
@@ -98,10 +100,10 @@
     #gaze-bar-wrap {
       position: absolute;
       left: 50%;
-      top: calc(50% + 20px);
-      width: 80px;
+      top: calc(50% + 22px);
+      width: 84px;
       height: 8px;
-      margin-left: -40px;
+      margin-left: -42px;
       border-radius: 999px;
       background: rgba(255,255,255,0.18);
       overflow: hidden;
@@ -119,20 +121,20 @@
       <h1 style="margin:0 0 8px;">Eye's On</h1>
       <div>Created by <strong>Your Name</strong></div>
       <div>CMPT 461 - Final Individual Project</div>
-      <div style="margin-top:8px; opacity:0.9;">Build v4</div>
+      <div style="margin-top:8px; opacity:0.9;">Build v6</div>
     </div>
 
     <div id="startMenu" class="panel">
       <h2 style="margin-top:0;">Setup</h2>
-      <div style="margin:10px 0;"><button id="musicBtnHtml">Music: OFF</button></div>
-      <div style="margin:10px 0;"><button id="sfxBtnHtml">SFX: OFF</button></div>
-      <div style="margin:10px 0;"><button id="difficultyBtnHtml">Difficulty: EASY</button></div>
-      <div style="margin:14px 0;"><button id="startBtnHtml">Start Game</button></div>
-      <div style="font-size:13px; opacity:0.9; margin-top:8px;">Start here, then enter VR mode after the game begins.</div>
+      <div id="musicGazeBtn" class="gaze-menu-btn">Music: OFF</div>
+      <div id="sfxGazeBtn" class="gaze-menu-btn">SFX: OFF</div>
+      <div id="difficultyGazeBtn" class="gaze-menu-btn">Difficulty: EASY</div>
+      <div id="startGazeBtn" class="gaze-menu-btn" style="background: rgba(255,255,255,0.18); margin-top:14px;">Start Game</div>
+      <div style="font-size:13px; opacity:0.9; margin-top:8px;">Center the crosshair on an option and hold still to select it.</div>
     </div>
 
     <div id="hud" class="panel hidden">
-      <div><strong>Build:</strong> v4</div>
+      <div><strong>Build:</strong> v6</div>
       <div><strong>Level:</strong> <span id="hud-level">1</span></div>
       <div><strong>Score:</strong> <span id="hud-score">0</span></div>
       <div><strong>Time:</strong> <span id="hud-time">0</span>s</div>
@@ -140,12 +142,12 @@
       <div><strong>Locked:</strong> <span id="hud-locked">NO</span></div>
     </div>
 
-    <div id="message" class="panel">VERSION V4 - Press Start Game.</div>
+    <div id="message" class="panel">VERSION V6 - Gaze at Start Game.</div>
 
-    <div id="reticle-ui" class="hidden">
+    <div id="reticle-ui">
       <div id="reticle-fill"></div>
     </div>
-    <div id="gaze-bar-wrap" class="hidden"><div id="gaze-bar"></div></div>
+    <div id="gaze-bar-wrap"><div id="gaze-bar"></div></div>
   </div>
 
   <a-scene vr-mode-ui="enabled: true" background="color: #1b1027">
@@ -190,11 +192,9 @@
       timer: 0,
       danger: 0,
       lastSeen: false,
-      outOfSightFrames: 0,
       levelDuration: 35,
       gameLoop: null,
       statueLoop: null,
-      gazeProgress: 0,
       levelConfigs: {
         1: {
           name: 'Level 1 - Haunted Study',
@@ -240,13 +240,12 @@
     const hudLocked = document.getElementById('hud-locked');
     const reticleUI = document.getElementById('reticle-ui');
     const reticleFill = document.getElementById('reticle-fill');
-    const gazeBarWrap = document.getElementById('gaze-bar-wrap');
     const gazeBar = document.getElementById('gaze-bar');
 
-    const musicBtnHtml = document.getElementById('musicBtnHtml');
-    const sfxBtnHtml = document.getElementById('sfxBtnHtml');
-    const difficultyBtnHtml = document.getElementById('difficultyBtnHtml');
-    const startBtnHtml = document.getElementById('startBtnHtml');
+    const musicBtn = document.getElementById('musicGazeBtn');
+    const sfxBtn = document.getElementById('sfxGazeBtn');
+    const difficultyBtn = document.getElementById('difficultyGazeBtn');
+    const startBtn = document.getElementById('startGazeBtn');
 
     const scene = document.querySelector('a-scene');
     const camera = document.getElementById('camera');
@@ -260,9 +259,9 @@
     }
 
     function updateSetupButtons() {
-      musicBtnHtml.textContent = `Music: ${state.musicOn ? 'ON' : 'OFF'}`;
-      sfxBtnHtml.textContent = `SFX: ${state.sfxOn ? 'ON' : 'OFF'}`;
-      difficultyBtnHtml.textContent = `Difficulty: ${state.difficulty.toUpperCase()}`;
+      musicBtn.textContent = `Music: ${state.musicOn ? 'ON' : 'OFF'}`;
+      sfxBtn.textContent = `SFX: ${state.sfxOn ? 'ON' : 'OFF'}`;
+      difficultyBtn.textContent = `Difficulty: ${state.difficulty.toUpperCase()}`;
     }
 
     function updateHUD(locked) {
@@ -282,6 +281,7 @@
 
     function setReticleLocked(locked) {
       reticleUI.style.borderColor = locked ? 'rgba(120,255,160,1)' : 'rgba(255,255,255,0.95)';
+      reticleUI.style.boxShadow = locked ? '0 0 14px rgba(120,255,160,0.85)' : 'none';
       reticleFill.style.background = locked ? 'rgba(120,255,160,1)' : 'rgba(255,255,255,0.95)';
     }
 
@@ -307,7 +307,7 @@
 
       const toStatue = statuePos.clone().sub(camPos).normalize();
       const dot = camDir.dot(toStatue);
-      return dot > 0.975;
+      return dot > 0.90;
     }
 
     function startLevel(level) {
@@ -318,7 +318,6 @@
       state.timer = 0;
       state.danger = 0;
       state.lastSeen = false;
-      state.outOfSightFrames = 0;
 
       const cfg = state.levelConfigs[level];
       const diffMult = state.difficulty === 'hard' ? 1.35 : 1;
@@ -329,8 +328,6 @@
       splash.classList.add('hidden');
       startMenu.classList.add('hidden');
       hud.classList.remove('hidden');
-      reticleUI.classList.remove('hidden');
-      gazeBarWrap.classList.remove('hidden');
       statueRoot.setAttribute('visible', true);
       mainLight.setAttribute('light', `type: point; intensity: ${cfg.lightIntensity}; distance: 25`);
       chooseStatuePosition();
@@ -353,12 +350,11 @@
         if (locked) {
           if (!state.lastSeen) {
             state.score += 25;
+            setMessage('Locked on statue. Danger is dropping.');
           }
           state.danger = Math.max(0, state.danger - decayRate);
-          state.outOfSightFrames = 0;
         } else {
-          state.outOfSightFrames += 1;
-          state.danger += dangerRate;
+          state.danger = Math.min(100, state.danger + dangerRate);
         }
 
         state.lastSeen = locked;
@@ -371,73 +367,92 @@
       }, 100);
     }
 
-    function attachButtonHold(button, onDone) {
-      let timer = null;
-      let progress = 0;
-      const tickMs = 40;
-      const totalMs = 900;
-
-      const reset = () => {
-        clearInterval(timer);
-        timer = null;
-        progress = 0;
-        setGazeProgress(0);
-      };
-
-      button.addEventListener('pointerdown', () => {
-        reset();
-        timer = setInterval(() => {
-          progress += tickMs / totalMs;
-          setGazeProgress(progress);
-          if (progress >= 1) {
-            reset();
-            onDone();
-          }
-        }, tickMs);
-      });
-
-      button.addEventListener('pointerup', reset);
-      button.addEventListener('pointerleave', reset);
-      button.addEventListener('touchend', reset);
-      button.addEventListener('touchcancel', reset);
+    function isCenterOnElement(el) {
+      const rect = el.getBoundingClientRect();
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      return cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom;
     }
 
-    musicBtnHtml.addEventListener('click', () => {
-      state.musicOn = !state.musicOn;
-      updateSetupButtons();
-    });
+    function setupMenuGaze() {
+      const buttons = [
+        {
+          el: musicBtn,
+          action: () => {
+            state.musicOn = !state.musicOn;
+            updateSetupButtons();
+          }
+        },
+        {
+          el: sfxBtn,
+          action: () => {
+            state.sfxOn = !state.sfxOn;
+            updateSetupButtons();
+          }
+        },
+        {
+          el: difficultyBtn,
+          action: () => {
+            state.difficulty = state.difficulty === 'easy' ? 'hard' : 'easy';
+            updateSetupButtons();
+          }
+        },
+        {
+          el: startBtn,
+          action: () => {
+            startLevel(1);
+          }
+        }
+      ];
 
-    sfxBtnHtml.addEventListener('click', () => {
-      state.sfxOn = !state.sfxOn;
-      updateSetupButtons();
-    });
+      let activeButton = null;
+      let progress = 0;
 
-    difficultyBtnHtml.addEventListener('click', () => {
-      state.difficulty = state.difficulty === 'easy' ? 'hard' : 'easy';
-      updateSetupButtons();
-    });
+      setInterval(() => {
+        if (startMenu.classList.contains('hidden')) {
+          activeButton = null;
+          progress = 0;
+          setGazeProgress(0);
+          return;
+        }
 
-    attachButtonHold(musicBtnHtml, () => {
-      state.musicOn = !state.musicOn;
-      updateSetupButtons();
-    });
-    attachButtonHold(sfxBtnHtml, () => {
-      state.sfxOn = !state.sfxOn;
-      updateSetupButtons();
-    });
-    attachButtonHold(difficultyBtnHtml, () => {
-      state.difficulty = state.difficulty === 'easy' ? 'hard' : 'easy';
-      updateSetupButtons();
-    });
-    attachButtonHold(startBtnHtml, () => {
-      startLevel(1);
-    });
+        const hovered = buttons.find((b) => isCenterOnElement(b.el));
 
-    startBtnHtml.addEventListener('click', () => startLevel(1));
+        buttons.forEach((b) => {
+          b.el.style.background = 'rgba(255,255,255,0.12)';
+          b.el.style.borderColor = 'rgba(255,255,255,0.25)';
+        });
+
+        if (!hovered) {
+          activeButton = null;
+          progress = 0;
+          setGazeProgress(0);
+          return;
+        }
+
+        hovered.el.style.background = 'rgba(255,220,120,0.18)';
+        hovered.el.style.borderColor = 'rgba(255,220,120,0.8)';
+
+        if (activeButton !== hovered.el) {
+          activeButton = hovered.el;
+          progress = 0;
+        }
+
+        progress += 0.05;
+        setGazeProgress(progress);
+
+        if (progress >= 1) {
+          progress = 0;
+          setGazeProgress(0);
+          hovered.action();
+        }
+      }, 50);
+    }
 
     scene.addEventListener('loaded', () => {
       updateSetupButtons();
-      setMessage('VERSION V4 - Press Start Game.');
+      setupMenuGaze();
+      setMessage('VERSION V6 - Gaze at Start Game.');
     });
 
     setTimeout(() => {
