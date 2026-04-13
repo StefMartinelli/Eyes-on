@@ -760,6 +760,7 @@ const state = {
 
 // ─── DOM refs ────────────────────────────────────────────────────────────────
 const scene        = document.getElementById('mainScene');
+const cameraEl     = document.getElementById('camera');
 const cursor3d     = document.getElementById('cursor3d');
 const menuRoot     = document.getElementById('menuRoot');
 const endRoot      = document.getElementById('endRoot');
@@ -861,6 +862,36 @@ function applyLevelTheme(level) {
   ambientLight.setAttribute('light', `type:ambient;color:${cfg.ambientColor};intensity:${cfg.ambientIntensity}`);
   mainLight.setAttribute('light', `type:point;color:${cfg.mainLightColor};intensity:${cfg.mainLightIntensity};distance:22`);
   scene.setAttribute('background', `color:${cfg.skyColor}`);
+}
+
+const cameraWorldPos = new THREE.Vector3();
+const cameraForward = new THREE.Vector3();
+const statueWorldPos = new THREE.Vector3();
+const statueTarget = new THREE.Vector3();
+const statueToCamera = new THREE.Vector3();
+
+function isStatueInView() {
+  if (!statueRoot.object3D.visible) return false;
+
+  cameraEl.object3D.getWorldPosition(cameraWorldPos);
+  cameraEl.object3D.getWorldDirection(cameraForward);
+  statueRoot.object3D.getWorldPosition(statueWorldPos);
+
+  const targetHeights = [1.3, 2.1, 0.7];
+  return targetHeights.some(height => {
+    statueTarget.set(statueWorldPos.x, statueWorldPos.y + height, statueWorldPos.z);
+    statueToCamera.subVectors(statueTarget, cameraWorldPos);
+    const distance = statueToCamera.length();
+    if (distance <= 0.001) return false;
+
+    statueToCamera.normalize();
+    const dot = cameraForward.dot(statueToCamera);
+    if (dot <= 0) return false;
+
+    const angularSize = Math.atan2(0.75, distance);
+    const lockAngle = angularSize + THREE.MathUtils.degToRad(10);
+    return Math.acos(Math.min(1, Math.max(-1, dot))) <= lockAngle;
+  });
 }
 
 // ─── Statue position ─────────────────────────────────────────────────────────
@@ -981,7 +1012,8 @@ function startLevel(level) {
 
   // ── Main game tick (100ms) ────────────────────────────────────────────────
   state.gameLoop = setInterval(() => {
-    const locked = state.statueGazed;
+    const locked = isStatueInView();
+    state.statueGazed = locked;
 
     if (locked !== state.lastSeen) {
       if (locked) playSfx('lock');
@@ -1096,7 +1128,7 @@ function setupGazeController() {
 
     // ── PLAYING phase ────────────────────────────────────────────────────────
     if (state.phase === 'playing') {
-      state.statueGazed = (action === 'statue');
+      state.statueGazed = action === 'statue' || isStatueInView();
       state.bonusGazed  = (action === 'bonus');
       // Menu progress resets
       lastAction = null; menuProgress = 0;
