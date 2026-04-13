@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Eye's On - Mobile VR</title>
+  <title>Eye's On - Mobile VR v3</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
     html, body {
@@ -97,13 +97,14 @@
     </div>
 
     <div id="hud" class="panel hidden">
+      <div><strong>Build:</strong> v3</div>
       <div><strong>Level:</strong> <span id="hud-level">1</span></div>
       <div><strong>Score:</strong> <span id="hud-score">0</span></div>
       <div><strong>Time:</strong> <span id="hud-time">0</span>s</div>
       <div><strong>Danger:</strong> <span id="hud-danger">0</span>%</div>
     </div>
 
-    <div id="message" class="panel hidden">Keep the statue inside the center reticle. Look back quickly for bonus points.</div>
+    <div id="message" class="panel hidden">VERSION V3 - Keep the statue inside the center reticle. Look back quickly for bonus points.</div>
     <div id="reticle-ui" class="reticle hidden">
       <div id="reticle-fill" style="position:absolute; left:50%; top:50%; width:6px; height:6px; margin-left:-3px; margin-top:-3px; border-radius:50%; background:rgba(255,255,255,0.9);"></div>
       <div id="reticle-ring" style="position:absolute; inset:-4px; border:2px solid rgba(255,255,255,0.25); border-radius:50%; clip-path: inset(0 0 100% 0);"></div>
@@ -183,7 +184,7 @@
       </a-entity>
     </a-entity>
 
-    <a-sky color="#0d0d12"></a-sky>
+    <a-sky color="#1a1026"></a-sky>
   </a-scene>
 
   <script>
